@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
+import { auth } from "../../firebase";
 import './NewEvent.css';
 
 export default function NewEvent({ setActivePage }) {
   const [inputs, setInputs] = useState({});
   const navigate = useNavigate();
+  const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -12,6 +15,7 @@ export default function NewEvent({ setActivePage }) {
   };
 
   const handleSubmit = async(e) => {
+    console.log("Check");
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -39,8 +43,6 @@ export default function NewEvent({ setActivePage }) {
       console.error(err);
       setError(err.message);
     }
-    console.log("Form submitted:", inputs);
-    // TODO: handle save event logic here
   };
 
   return (
