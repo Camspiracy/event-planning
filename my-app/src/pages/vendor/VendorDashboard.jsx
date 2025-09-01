@@ -36,7 +36,7 @@ const VendorDashboard = ({ setActivePage }) => {
 
   return (
     <div className="vendor-dashboard">
-      {/* Header Section */}
+     
       <div className="dashboard-header">
         <div>
           <h1 className="dashboard-title">Dashboard Overview</h1>

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import './PlannerDashboard.css';
 import { 
   Calendar, 
@@ -15,12 +14,7 @@ import {
 
 
 export default function PlannerDashboard({setActivePage}){
-    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(true);
-
-    const navNewEvent = () => {
-        navigate("/new-event");
-    }
 
     const navigationItems = [
         {id: 'dashboard', label: 'Dashboard', icon: BarChart3},
@@ -31,17 +25,17 @@ export default function PlannerDashboard({setActivePage}){
         {id: 'reports', label: 'Reports', icon: FileText},
     ]
 
-    const upcomingEvents = [
-    { id: 1, title: "Annual Tech Conference", date: "Sep 25, 2025", time: "10:00 AM", attendees: 120, status: "Confirmed" },
-    { id: 2, title: "Marketing Workshop", date: "Sep 28, 2025", time: "2:00 PM", attendees: 85, status: "Pending" },
-    { id: 3, title: "Community Meetup", date: "Oct 2, 2025", time: "6:00 PM", attendees: 50, status: "Pending" }
-    ];
+const upcomingEvents = [
+  { id: 1, title: "Annual Tech Conference", date: "Sep 25, 2025", time: "10:00 AM", attendees: 120, status: "Confirmed" },
+  { id: 2, title: "Marketing Workshop", date: "Sep 28, 2025", time: "2:00 PM", attendees: 85, status: "Pending" },
+  { id: 3, title: "Community Meetup", date: "Oct 2, 2025", time: "6:00 PM", attendees: 50, status: "Pending" }
+];
 
-    const pendingVendors = [
-    { id: 1, name: "ABC Catering", event: "Annual Tech Conference", contact: "abc@catering.com", status: "Confirmed" },
-    { id: 2, name: "SoundWorks", event: "Marketing Workshop", contact: "contact@soundworks.co.za", status: "Pending" },
-    { id: 3, name: "VenueCo", event: "Community Meetup", contact: "info@venueco.com", status: "Confirmed" }
-    ];
+const pendingVendors = [
+  { id: 1, name: "ABC Catering", event: "Annual Tech Conference", contact: "abc@catering.com", status: "Confirmed" },
+  { id: 2, name: "SoundWorks", event: "Marketing Workshop", contact: "contact@soundworks.co.za", status: "Pending" },
+  { id: 3, name: "VenueCo", event: "Community Meetup", contact: "info@venueco.com", status: "Confirmed" }
+];
 
 
     return(
@@ -55,7 +49,7 @@ export default function PlannerDashboard({setActivePage}){
                     </section>
 
                     <section className='actions'>
-                        <button className='page-button' onClick={navNewEvent}><Plus size={16}/> New Event</button>
+                        <button className='page-button'><Plus size={16}/> New Event</button>
                     </section>
 
                 </section>

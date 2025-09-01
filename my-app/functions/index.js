@@ -38,7 +38,7 @@ async function authenticate(req, res, next) {
 }
 
 
-app.post('/vendor/apply', authenticate, upload.single('profilePic'), async (req, res) => {
+app.post('/vendor/apply', upload.single('profilePic'), async (req, res) => {
   try {
     const { businessName, phone, email, description, category, address } = req.body;
     let profilePicURL = '';
@@ -68,11 +68,12 @@ app.post('/vendor/apply', authenticate, upload.single('profilePic'), async (req,
   }
 });
 
-// Get vendor
+
 app.get('/vendor/me', authenticate, async (req, res) => {
   try {
+
     const doc = await db.collection('Vendor').doc(req.uid).get();
-    if (!doc.exists) return res.status(404).json({ message: 'Vendor not found' });
+    if (!doc.exists) return res.status(404).json({ message: 'Vendor not found ' });
     res.json(doc.data());
   } catch (err) {
     console.error(err);
@@ -93,12 +94,17 @@ app.put('/vendor/me', authenticate, upload.single('profilePic'), async (req, res
     }
 
     await db.collection('Vendor').doc(req.uid).set(updateData, { merge: true });
-    res.json({ message: 'Profile updated successfully' });
+
+      
+
+    res.status(200).json({ message: 'Profile updated successfully', data: updateData });
   } catch (err) {
+      
     console.error(err);
-    res.status(500).json({ message: 'Server Error ' });
+    res.status(500).json({ message: 'Server Error', error: err.message });
   }
 });
+
 
 //Apply for event
 app.post('/event/apply', authenticate, async (req, res) => {
@@ -118,9 +124,10 @@ app.post('/event/apply', authenticate, async (req, res) => {
     });
 
     res.json({ message: 'Event application submitted successfully' });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error: event unsuccefully posted' });
+    res.status(500).json({ message: 'Server Error ' });
   }
 });
 

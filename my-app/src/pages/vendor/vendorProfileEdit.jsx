@@ -24,7 +24,7 @@ export default function VendorProfileEdit() {
       if (!auth.currentUser) return;
       try {
         const token = await auth.currentUser.getIdToken();
-        const res = await fetch("http://localhost:5000/api/vendor/me", {
+        const res = await fetch("https://us-central1-planit-sdp.cloudfunctions.net/api/vendor/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch profile");
@@ -44,45 +44,63 @@ export default function VendorProfileEdit() {
   }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-    if (!auth.currentUser) {
-      setError("You must be logged in.");
-      return;
-    }
+  if (!auth.currentUser) {
+    setError("You must be logged in.");
+    return;
+  }
 
-    const token = await auth.currentUser.getIdToken();
+  const token = await auth.currentUser.getIdToken();
 
-    try {
-      const formData = new FormData();
-      formData.append("description", description);
-      formData.append("address", address);
-      formData.append("phone", phone);
-      formData.append("email", email);
-      if (profilePic) formData.append("profilePic", profilePic);
+  try {
+    let profilePicBase64 = null;
 
-      const res = await fetch("http://localhost:5000/api/vendor/me", {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData, // send as multipart/form-data if profilePic is included
+    if (profilePic) {
+     
+      profilePicBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(profilePic);
+        reader.onload = () => {
+          const base64String = reader.result.split(",")[1]; 
+          resolve(base64String);
+        };
+        reader.onerror = (error) => reject(error);
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Update failed");
-
-      setSuccess("Profile updated successfully!");
-      setTimeout(() => navigate("/vendor-app"), 1000);
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
     }
-  };
 
-  if (loading) return <p>Loading profile...</p>;
+    const res = await fetch("https://us-central1-planit-sdp.cloudfunctions.net/api/vendor/me", {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        description,
+        address,
+        phone,
+        email,
+        profilePic: profilePicBase64,
+      }),
+    });
+
+
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Update failed");
+
+    setSuccess("Profile updated successfully!");
+    setTimeout(() => navigate("/vendor-app"), 1000);
+  } catch (err) {
+    console.error(err);
+    setError(err.message);
+  }
+};
+
+
+ 
 
   return (
     <main className="vendor-apply-page">
@@ -100,7 +118,11 @@ export default function VendorProfileEdit() {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={4}
+              rows={4}  
+
+
+
+
               required
             />
           </label>

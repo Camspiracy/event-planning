@@ -1,4 +1,4 @@
-// src/vendor/VendorApp.jsx
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -32,7 +32,9 @@ const VendorApp = () => {
   const renderPlaceholderPage = (pageTitle) => (
     <div className="placeholder-page">
       <div className="placeholder-content">
-        <div className="placeholder-icon">
+        <div className="placeholder-icon">  
+
+
           {navigationItems.find(item => item.id === activePage)?.icon && 
             React.createElement(navigationItems.find(item => item.id === activePage).icon, { size: 32 })
           }
@@ -41,7 +43,9 @@ const VendorApp = () => {
         <p className="placeholder-text">This page is coming soon. All the functionality will be built here.</p>
         <button 
           onClick={() => setActivePage("dashboard")}
-          className="back-to-dashboard-btn"
+          className="back-to-dashboard-btn"    
+
+
         >
           Back to Dashboard
         </button>
@@ -105,7 +109,7 @@ const VendorApp = () => {
         </div>
       </nav>
 
-      {/* Main Content */}
+   
       <main className="vendor-main">
         {renderCurrentPage()}
       </main>
