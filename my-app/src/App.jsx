@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx';
 import PlannerApp from './pages/planner/PlannerApp.jsx'
 import Admin from './pages/adminDashboard/Admin.jsx';
 import PlannerDashboard from './pages/planner/PlannerDashboard.jsx';
+import NewEvent from './pages/planner/NewEvent.jsx';
 import PlannerManagement from './pages/adminDashboard/PlannerManagement.jsx';
 import EventManagement from './pages/adminDashboard/EventManagement.jsx';
 import VendorManagement from './pages/adminDashboard/VendorManagement.jsx';
@@ -36,6 +37,7 @@ function App() {
         <Route path='/planner-dashboard' element={<PlannerApp />} />
         <Route path='/admin' element={<Admin />} />
         <Route path='/planner-dashboard' element={<PlannerDashboard />} />
+        <Route path='/new-event' element={<NewEvent />} />
         <Route path='/vendor-app' element={<VendorApp />}/>
         <Route path='/admin/admin-home' element ={<Admin />} />
         <Route path='/vendor/vendor-dashboard' element ={<VendorProfile />} />
