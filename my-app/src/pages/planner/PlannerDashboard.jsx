@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './PlannerDashboard.css';
 import { 
   Calendar, 
@@ -15,6 +16,11 @@ import {
 
 export default function PlannerDashboard({setActivePage}){
     const [isOpen, setIsOpen] = useState(true);
+    const navigate = useNavigate();
+
+    const navNewEvent = () => {
+        navigate("/new-event");
+    }
 
     const navigationItems = [
         {id: 'dashboard', label: 'Dashboard', icon: BarChart3},
@@ -49,7 +55,7 @@ const pendingVendors = [
                     </section>
 
                     <section className='actions'>
-                        <button className='page-button'><Plus size={16}/> New Event</button>
+                        <button className='page-button' onClick={navNewEvent}><Plus size={16}/> New Event</button>
                     </section>
 
                 </section>
