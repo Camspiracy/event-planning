@@ -166,12 +166,13 @@ function ViewSchedulePopup({ isOpen, onClose, onSave, eventData, onDelete }) {
     );
 }
 
-function getAllSlots(start, end, scheduleData) {
+function getAllSlots(start, duration, scheduleData) {
+    console.log("Generating slots for start:", start, "duration:", duration);
     const slotsSet = new Set();
 
     // Add all hourly slots
     let current = new Date(start);
-    while (current <= end) {
+    for (let i = 0; i < duration; i++) {
         slotsSet.add(current.toTimeString().slice(0, 5));
         current.setHours(current.getHours() + 1, 0, 0, 0);
     }
@@ -195,22 +196,14 @@ function groupEventsByStartTime(scheduleData) {
     return map;
 }
 
-function SameDayScheduler() {
-    const event = {
-        startDate: new Date("2023-10-10T09:00:00"),
-        endDate: new Date("2023-10-10T17:00:00"),
-    };
+function SameDayScheduler({event}) {
+    console.log("Rendering SameDayScheduler with event:", event);
 
-    const [scheduleData, setScheduleData] = useState([
-        { StartTime: "09:00", appointment: "Breakfast", EndTime: "09:30", description: "Morning meal" },
-        { StartTime: "09:00", appointment: "Call", EndTime: "09:15", description: "Quick call" },
-        { StartTime: "10:00", appointment: "Meeting", EndTime: "11:00", description: "Project discussion" },
-        { StartTime: "12:00", appointment: "Lunch", EndTime: "13:00", description: "Afternoon meal" },
-    ]);
+    const [scheduleData, setScheduleData] = useState(event.schedules || []);
     const [popupOpen, setPopupOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
 
-    const slots = getAllSlots(event.startDate, event.endDate, scheduleData);
+    const slots = getAllSlots(event.date, event.duration, scheduleData);
     const eventsByTime = groupEventsByStartTime(scheduleData);
 
     // Find the max number of events at any single time for column count

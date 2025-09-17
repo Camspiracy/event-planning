@@ -929,7 +929,7 @@ export default function PlannerViewEvent({event, setActivePage, onOpenMarketplac
 
                     {activeTab === "schedule" && (
                         <section className="schedule-content">
-                            <Scheduler />
+                            <Scheduler event={event}/>
                         </section>
                     )}
 
