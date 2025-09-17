@@ -2,11 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import "./PlannerViewEvent.css";
 import { getAuth } from 'firebase/auth';
 import Papa from 'papaparse';
-import {Schedule} from './scheduler.jsx';
-
-const appointments = [{ start: new Date(2023, 9, 20, 9, 0), end: new Date(2023, 9, 20, 10, 0), title: "Venue Visit", description: "Visit the venue to finalize layout and decorations." },
-{ start: new Date(2023, 9, 21, 14, 0), end: new Date(2023, 9, 21, 15, 0), title: "Catering Meeting", description: "Discuss menu options and finalize catering details." },
-{ start: new Date(2023, 9, 22, 11, 0), end: new Date(2023, 9, 22, 12, 0), title: "Decor Planning", description: "Planning Decor"},];
+import Scheduler from "./Schedule"; // adjust path if needed
 
 //Code for the pop up when manually adding a guest **********
 function AddGuestPopup({ isOpen, onClose, onSave }) {
@@ -933,7 +929,7 @@ export default function PlannerViewEvent({event, setActivePage, onOpenMarketplac
 
                     {activeTab === "schedule" && (
                         <section className="schedule-content">
-                            {/*Schedule(appointments={appointments});*/}
+                            <Scheduler />
                         </section>
                     )}
 
