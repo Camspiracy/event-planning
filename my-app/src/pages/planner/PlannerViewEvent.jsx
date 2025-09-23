@@ -2,9 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import "./PlannerViewEvent.css";
 import { getAuth } from 'firebase/auth';
 import Papa from 'papaparse';
-import Scheduler from './scheduler.jsx';
-
-
+import ChatComponent from './ChatComponent.jsx'
 
 
 //Code for the pop up when manually adding a guest **********
@@ -227,21 +225,33 @@ function GuestRSVPSummary({guests}) {
 //End of code for guest RSVP summary bar *********
 
 //Code for one vendor list item **********
-function ServiceItem({service}) {
+function ServiceItem({service, showChat}) {
     return(
         <section className="vendor-item">
             <section className="vendor-info">
                 <h4>{service.serviceName}</h4>
                 <p>Vendored By: {service.vendorName}</p>
             </section>
-            <section className="vendor-cost">
-                <h4>Estimated Total Cost: </h4>
-                <p>R {service.estimatedCost}</p>
+            {service.status === "confirmed" ? ( 
+                <section className="vendor-cost">
+                    <h4>Confirmed Total Cost: </h4>
+                    <p>R {service.finalPrice}</p>
+                </section>) : (
+                    <section className="vendor-cost">
+                    <h4>Estimated Total Cost: </h4>
+                    <p>R {service.estimatedCost}</p>
+                </section>
+                )}
+
+            <section className='serviceitem-footer'>
+                <section className="vendor-actions">
+                    <button className="contact-btn">Contract</button>
+                    <button onClick={() => showChat(service)} className="remove-btn">Chat</button>
+                    <button className="remove-btn">Remove</button>
+                </section>
+                <section className={service.status === "confirmed" ? "serviceitem-status confirmed" : "serviceitem-status pending"}>${service.status}</section>
             </section>
-            <section className="vendor-actions">
-                <button className="contact-btn">Contract</button>
-                <button className="remove-btn">Remove</button>
-            </section>
+
         </section>
     );
 }
@@ -454,6 +464,11 @@ export default function PlannerViewEvent({event, setActivePage}) {
     const [showAddGuestPopup, setShowAddGuestPopup] = useState(false);
     const [showImportGuestPopup, setShowImportGuestPopup] = useState(false);
     const [services, setServices] = useState([]);
+    const [showChat, setShowChat] = useState(false);
+    const [chatVendorId, setChatVendorId] = useState(null);
+    const [serviceType, setServiceType] = useState(null);
+    const [chatService, setChatService] = useState(null);
+    const [plannerId, setPlannerID] = useState(null);
 
     const [editForm, setEditForm] = useState({...eventData});
 
@@ -509,7 +524,7 @@ export default function PlannerViewEvent({event, setActivePage}) {
         });
         if (!res.ok) console.log("Update Failed"); 
         console.log("Updated Event.");
-    }    
+    };    
 
     const sendReminder = async (guestId, eventId) => {
          const auth = getAuth();
@@ -532,7 +547,7 @@ export default function PlannerViewEvent({event, setActivePage}) {
         }
 
 
-    }
+    };
 
     const fetchServices = async() => {
         const auth = getAuth();
@@ -555,7 +570,7 @@ export default function PlannerViewEvent({event, setActivePage}) {
         }catch(err){
             console.error("Failed to fetch services")
         }
-    }
+    };
 
     useEffect(() => {
         async function loadGuests() {
@@ -651,8 +666,25 @@ export default function PlannerViewEvent({event, setActivePage}) {
         console.log("Guest creation done.");
     }
 
+    const onShowChat = async (service) => {
+        //Data fetching will go here
+        setChatService(service);
+        setShowChat(true);
+    }
+
+    const onCloseChat = async () => {
+        //Clearing of variables will go here
+        setChatService(null);
+        setShowChat(false);
+    }
+
     return(
         <section className="event-view-edit">
+            {showChat && (
+                <ChatComponent plannerId={event.plannerId} vendorId={chatService.vendorId} eventId = {event.id} closeChat={onCloseChat}
+                currentUser={{id:event.plannerId, name: event.name, type: "planner"}}
+                otherUser={{id: chatService.vendorId, name: chatService.vendorName, type: "vendor"}} serviceType={chatService.serviceName}/>
+            )}
             <section className="event-header">
                 
                 <section className="header-top">
@@ -966,7 +998,7 @@ export default function PlannerViewEvent({event, setActivePage}) {
                             </section>
                             <section className="vendors-list">
                                 {services && services.length > 0 ? services.map((service) => (
-                                    <ServiceItem key={service.id} service={service} />
+                                    <ServiceItem key={service.id} service={service} showChat={onShowChat} />
                                 )) : (
                                     <section className="empty-state">
                                         <p>No services added yet. Click "Add Vendor" to start building your services list.</p>

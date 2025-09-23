@@ -24,13 +24,15 @@ function AdminVendorManagement() {
 			? auth.currentUser.getIdToken()
 			: Promise.reject("Not logged in");
 
-	// Fetch all vendors on component mount
+	
+
+			
 	useEffect(() => {
 		const fetchVendors = async () => {
 			try {
 				const token = await getToken();
 				const apiUrl =
-					"http://127.0.0.1:5001/planit-sdp/us-central1/api/admin/vendors";
+					"https://us-central1-planit-sdp.cloudfunctions.net/api/admin/vendors";
 				const response = await fetch(apiUrl, {
 					headers: { Authorization: `Bearer ${token}` },
 				});

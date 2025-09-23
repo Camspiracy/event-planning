@@ -131,6 +131,7 @@ export default function PlannerSchedules() {
     if (!res1.ok) showNotification("error", "Failed to get upload URL");
     const { uploadUrl, filePath } = await res1.json();
 
+    console.log("UploadURL: ", uploadUrl);
     //Upload file directly to signed URL
     const res2 = await fetch(uploadUrl, {
       method: "PUT",

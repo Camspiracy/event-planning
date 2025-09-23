@@ -17,7 +17,6 @@ function VendorCard({ vendor, onViewMore, onAddVendor }) {
                     </section>
                 </section>
                 <section className="vendor-actions">
-                    <button className="btn btn-primary" onClick={() => onAddVendor(vendor)}>Add Vendor</button>
                     <button className="btn btn-secondary" onClick={() => onViewMore(vendor)}>
                         View Details
                     </button>
@@ -225,7 +224,7 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
         const user = auth.currentUser;
         const token = await user.getIdToken(true);
 
-        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${plannerId}/bestvendors`, {
+        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${plannerId}/bestVendors`, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
@@ -241,7 +240,7 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
         const user = auth.currentUser;
         const token = await user.getIdToken(true);
 
-        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/events/${eventId}/bestvendors`, {
+        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/events/${eventId}/bestVendors`, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
@@ -347,13 +346,15 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
             if (activeTab === 'all-events') {
                 const allVendors = await fetchAllEventsVendors();
                 setVendors(allVendors);
+                console.log(vendors);
             } else if (activeTab === 'event-specific') {
                 const eventsData = await fetchEvents();
                 setEvents(eventsData);
-                
+        
                 if (selectedEvent?.id) {
                     const eventVendors = await fetchEventSpecificVendors(selectedEvent.id);
                     setVendors(eventVendors);
+                    console.log(vendors);
                 }
             }
             

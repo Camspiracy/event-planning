@@ -29,6 +29,32 @@ const PlannerContract = ({ setActivePage }) => {
   const canvasRefs = useRef({});
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
+  const confirmRelevantServices = async(eventId, vendorId) => {
+      if (!auth.currentUser) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+    }
+
+
+    try{
+      const token = await auth.currentUser.getIdToken();
+
+      const res = await fetch(
+        `https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/${vendorId}/confirm-services`, 
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if(!res.ok) alert("Failed to confirm services");
+      return res;
+    }catch(err){
+      console.error(err);
+    }
+  }
+
   const fetchEventsAndContracts = useCallback(async () => {
     if (!auth.currentUser) {
       setError("User not authenticated");
@@ -462,11 +488,29 @@ const PlannerContract = ({ setActivePage }) => {
       });
 
       const allSigned = updatedFields.every(field => !field.required || field.signed);
+
+      const response = await fetch(
+        `https://us-central1-planit-sdp.cloudfunctions.net/api/contracts/${selectedContract.id}/signature-fields`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            eventId: selectedContract.eventId,
+            signatureFields: updatedFields,
+            signers: selectedContract.signers || [],
+            vendorId: selectedContract.vendorId
+          }),
+        });
+
       
       const contractRef = doc(
         db, 
         `Event/${selectedContract.eventId}/Vendors/${selectedContract.vendorId}/Contracts`, 
         selectedContract.id
+
       );
       
       const updateData = {
@@ -518,6 +562,11 @@ const PlannerContract = ({ setActivePage }) => {
             : c
         )
       );
+
+      const res = await confirmRelevantServices(selectedContract.eventId, selectedContract.vendorId);
+      if(res.ok){
+        alert("Services confirmed successfully!");
+      }
 
       setShowSignModal(false);
       setSelectedContract(null);

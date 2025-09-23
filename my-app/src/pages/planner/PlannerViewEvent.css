@@ -619,7 +619,8 @@
 
 .send-reminder-btn,
 .edit-guest-btn,
-.contact-btn,
+.contract-btn,
+.serviceitem-status,
 .remove-btn {
     padding: 4px 8px;
     border: none;
@@ -673,21 +674,44 @@
     display: inline-block;
     font-weight: 500;
 }
+.serviceitem-footer{
+    display: flex;
+    justify-content: space-between;
+}
+
+.serviceitem-status{
+    display: flex;
+    justify-content: space-between;
+}
+
+
+.serviceitem-status.confirmed{
+    background: #09b201;
+    color: white;
+}
+.serviceitem-status.pending{
+    background: #f29203;
+    color: white;
+}
 
 .vendor-actions {
     display: flex;
     gap: 6px;
 }
 
-.contact-btn {
+.contract-btn {
     background: #6366f1;
     color: white;
 }
 
-.contact-btn:hover {
+.contract-btn:hover {
     background: #5856eb;
 }
 
+.chat-btn {
+    background: #05a6be;
+    color: white;
+}
 .remove-btn {
     background: #fecaca;
     color: #dc2626;
