@@ -489,6 +489,8 @@ const PlannerContract = ({ setActivePage }) => {
 
       const allSigned = updatedFields.every(field => !field.required || field.signed);
 
+      const token = auth.currentUser.getIdToken();
+
       const response = await fetch(
         `https://us-central1-planit-sdp.cloudfunctions.net/api/contracts/${selectedContract.id}/signature-fields`,
         {

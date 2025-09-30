@@ -424,7 +424,7 @@
 
 .vendor-image {
     width: 100%;
-    height: 220px;
+    height: 200px;
     object-fit: cover;
     background: linear-gradient(135deg, #f9fafb, #e5e7eb);
 }

@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { Edit, Mail, Phone } from "lucide-react";
 import "./AdminProfile.css";
 
@@ -35,7 +37,7 @@ const AdminProfile = () => {
 	};
 
 	useEffect(() => {
-		const unsubscribe = auth.onAuthStateChanged((user) => {
+		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			if (user) {
 				fetchAdminProfile();
 			} else {

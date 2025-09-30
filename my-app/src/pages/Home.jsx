@@ -9,8 +9,29 @@ export default function Home() {
 	const navigate = useNavigate();
 	const auth = getAuth();
 
-	const navPlannerDashboard = () => {
-		navigate("/planner-dashboard");
+
+	const navPlannerDashboard = async () => {
+
+		try{
+			if (!auth.currentUser) {
+					alert("You must be logged in");
+					return;
+			}
+
+			const token = await auth.currentUser.getIdToken();
+
+			const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/event-status-update`, {
+				headers: {
+					"Authorization": `Bearer ${token}`
+				}
+			});
+
+			navigate("/planner-dashboard");
+		}
+		catch(err){
+			console.error(err);
+		}
+
 	};
 	const navVendorApply = async () => {
 		try {

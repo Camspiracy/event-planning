@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "../../planner/PlannerAllEvents.css";
 import { getAuth } from "firebase/auth";
 
-function EventCard({ event, onSelectEvent, onDeleteEvent }) {
+function EventCard({ event, onQuickView, onDeleteEvent }) {
 	const formatDate = (dateString) => {
 		const date = new Date(dateString);
 		return date.toLocaleDateString("en-US", {
@@ -12,7 +12,6 @@ function EventCard({ event, onSelectEvent, onDeleteEvent }) {
 			year: "numeric",
 		});
 	};
-
 
 	const getStatusColor = (status) => {
 		switch (status) {
@@ -50,7 +49,13 @@ function EventCard({ event, onSelectEvent, onDeleteEvent }) {
 				<p>{event.description}</p>
 			</section>
 			<section className="event-buttons">
-				<button className="quick-view-btn">Quick View</button>
+				
+				<button
+				className="quick-view-btn"
+				 onClick={() => onQuickView(event)} >
+					Quick View
+				</button>
+
 				<button
 					className="delete-btn"
 					onClick={() => onDeleteEvent(event.id)}
@@ -62,29 +67,33 @@ function EventCard({ event, onSelectEvent, onDeleteEvent }) {
 	);
 }
 
-export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
+export default function AdminAllEvents({ setActivePage, setSelectedEvent }) {
+
+
 	const [search, setSearch] = useState("");
 	const [statusFilter, setStatusFilter] = useState("All");
 	const [sortBy, setSortBy] = useState("date");
 	const [events, setEvents] = useState([]);
+	const [loading, setLoading] = useState(true); // track loading state
 
 	const fetchAdminEvents = async () => {
 		const auth = getAuth();
 		const user = auth.currentUser;
+		if (!user) {
+			console.warn("No user signed in");
+			return [];
+		}
 		const token = await user.getIdToken(true);
 
 		const res = await fetch(
 			`https://us-central1-planit-sdp.cloudfunctions.net/api/admin/events`,
 			{
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
+				headers: { Authorization: `Bearer ${token}` },
 			}
 		);
 		if (!res.ok) return [];
 
 		const data = await res.json();
-		console.log("API response:", data);
 		return data.events || [];
 	};
 
@@ -97,9 +106,7 @@ export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
 			`https://us-central1-planit-sdp.cloudfunctions.net/api/admin/events/${eventId}`,
 			{
 				method: "DELETE",
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
+				headers: { Authorization: `Bearer ${token}` },
 			}
 		);
 
@@ -112,8 +119,10 @@ export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
 
 	useEffect(() => {
 		async function loadEvents() {
+			setLoading(true);
 			const events = await fetchAdminEvents();
 			setEvents(events);
+			setLoading(false);
 		}
 		loadEvents();
 	}, []);
@@ -122,9 +131,7 @@ export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
 		.filter(
 			(event) =>
 				(event.name.toLowerCase().includes(search.toLowerCase()) ||
-					event.location
-						.toLowerCase()
-						.includes(search.toLowerCase())) &&
+					event.location.toLowerCase().includes(search.toLowerCase())) &&
 				(statusFilter === "All" || event.status === statusFilter)
 		)
 		.sort((a, b) => {
@@ -142,13 +149,19 @@ export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
 			}
 		});
 
+	
+
+const handleQuickView = (event) => {
+  setSelectedEvent(event);       // ✅ pass whole event object
+  setActivePage("AdminViewEvent");
+};
+
+
 	return (
 		<section className="events-list">
 			<section className="events-header">
-				<h2>Events </h2>
-				<p className="events-subtitle">
-					Manage, track, and delete events
-				</p>
+				<h2>Events</h2>
+				<p className="events-subtitle">Manage, track, and delete events</p>
 			</section>
 
 			<section className="events-controls">
@@ -185,7 +198,7 @@ export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
 						className={`status-filter-btn ${
 							statusFilter === "upcoming" ? "active" : ""
 						}`}
-						onClick={() => setStatusFilter("planning")}
+						onClick={() => setStatusFilter("upcoming")}
 					>
 						Upcoming
 					</button>
@@ -209,12 +222,17 @@ export default function AdminAllEvents({ setActivePage, onSelectEvent }) {
 			</section>
 
 			<section className="events-grid">
-				{filteredEvents.length > 0 ? (
+				{loading ? (
+					<section className="loading">
+						<div className="spinner"></div>
+						<p>Loading events...</p>
+					</section>
+				) : filteredEvents.length > 0 ? (
 					filteredEvents.map((event) => (
 						<EventCard
 							key={event.id}
 							event={event}
-							onSelectEvent={onSelectEvent}
+							onQuickView={handleQuickView}
 							onDeleteEvent={deleteEvent}
 						/>
 					))

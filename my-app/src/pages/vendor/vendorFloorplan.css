@@ -1,113 +1,202 @@
-
-
+/* ===== Vendor Floorplan Page ===== */
 .floorplan-page {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 1rem; /* reduce padding for smaller screens */
+  padding: 1.5rem;
   box-sizing: border-box;
+  font-family: "Inter", sans-serif;
 }
 
-.floorplan-page header {
-  text-align: center;
-  margin-bottom: 1rem;
+.floorplan-page .header-left {
+  text-align: left; /* Changed to left-align the header */
+  margin-bottom: 2rem;
 }
 
 .floorplan-page h1 {
-  font-size: 1.5rem;
-  color: #333;
+  font-size: 1.75rem;
+  color: #111827;
+  font-weight: 600;
+  margin-bottom: 10px;
 }
 
 .floorplan-page p {
-  color: #666;
+  color: #6b7280;
   margin-top: 0.25rem;
   font-size: 0.95rem;
+  padding-bottom: 20px;
 }
 
-/* Controls */
+/* ===== Controls ===== */
 .controls {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: flex-start;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   width: 100%;
   box-sizing: border-box;
 }
 
-.search-input, .sort-dropdown {
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
+.search-input,
+.sort-dropdown {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
   border: 1px solid #d1d5db;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   box-sizing: border-box;
-  min-width: 140px;
+  min-width: 150px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: white;
+  color: #111827; /* Ensure input text is black */
 }
 
-/* Tiles */
+.search-input::placeholder {
+  color: #9ca3af; /* Optional: placeholder in lighter gray */
+}
+
+.search-input:focus,
+.sort-dropdown:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* ===== Tiles Grid ===== */
 .tiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
 
 .client-tile {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 2px solid #2563eb;
+  border-radius: 12px;
   padding: 1rem;
   text-align: center;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 280px;
 }
 
 .client-tile:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
 }
 
 .client-tile h3 {
   margin: 0 0 0.25rem;
   color: #111827;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
 }
 
 .client-tile p {
   margin: 0;
   color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* ===== Floorplan Section ===== */
+.floorplan-section {
+  margin-top: 0.75rem;
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex-grow: 1;
+}
+
+.floorplan-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  justify-content: flex-start;
+}
+
+.floorplan-image {
+  width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  border: 2px solid #000000;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.floorplan-image:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.floorplan-label {
   font-size: 0.85rem;
+  color: #2563eb;
+  font-weight: 500;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.no-floorplan {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  padding-bottom: 0.5rem;
+  flex-grow: 1;
 }
 
 .no-results {
   grid-column: 1 / -1;
   text-align: center;
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   padding: 1rem 0;
 }
 
-/* Modal */
+/* ===== Modal Styling ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  padding: 0.5rem; /* small padding so modal never overflows screen */
+  padding: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .modal-content {
   background: #fff;
-  border-radius: 8px;
-  max-width: 100%;
+  border-radius: 12px;
+  max-width: 700px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1.5rem;
   box-sizing: border-box;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 .modal-header {
@@ -115,74 +204,99 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e5e7eb;
   padding-bottom: 0.5rem;
+}
+
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #111827;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   cursor: pointer;
+  color: #6b7280;
+  transition: color 0.2s ease;
 }
 
-/* History sections */
-.history-section {
-  margin-bottom: 1rem;
+.close-btn:hover {
+  color: #111827;
 }
 
-.history-header {
+/* ===== Modal Floorplan Image ===== */
+.modal-floorplan {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.modal-floorplan-image {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  border: 2px solid #000000;
   margin-bottom: 0.5rem;
 }
 
-.history-section h3 {
-  margin: 0;
+.modal-floorplan a {
   color: #2563eb;
-  font-size: 0.95rem;
-}
-
-.history-section select {
-  padding: 0.2rem 0.4rem;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.history-section ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.history-section li {
-  padding: 4px 0;
-  font-size: 0.85rem;
-  color: #444;
-  word-wrap: break-word; /* prevent text overflow */
-}
-
-.history-section a {
-  color: #10b981;
   text-decoration: underline;
+  font-weight: 500;
 }
 
-.history-section a:hover {
-  color: #059669;
+.modal-floorplan a:hover {
+  color: #1d4ed8;
 }
 
-/* Responsive adjustments */
-@media (max-width: 600px) {
+/* ===== Loading States ===== */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+  color: #64748b;
+  padding: 2rem;
+}
+
+.loading-screen h2 {
+  margin: 1rem 0 0.5rem;
+  color: #1e293b;
+  font-size: 1.2rem;
+}
+
+.spinner {
+  border: 3px solid #f1f5f9;
+  border-top: 3px solid #2563eb;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== Responsive Adjustments ===== */
+@media (max-width: 640px) {
   .controls {
     flex-direction: column;
     gap: 0.5rem;
   }
 
   .client-tile h3 {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 
   .client-tile p {
@@ -190,14 +304,6 @@
   }
 
   .modal-content {
-    padding: 0.75rem;
-  }
-
-  .history-section h3 {
-    font-size: 0.9rem;
-  }
-
-  .history-section li {
-    font-size: 0.8rem;
+    padding: 1rem;
   }
 }

@@ -3,245 +3,202 @@ import { Send, Check, CheckCheck, Clock, User, Building2, X } from 'lucide-react
 import './ChatComponent.css';
 import { getAuth } from 'firebase/auth';
 
-const ChatComponent = ({ plannerId, vendorId, eventId, currentUser, otherUser, closeChat}) => {
+const ChatComponent = ({ plannerId, vendorId, eventId, currentUser, otherUser, closeChat }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
- function formatDate(date) {
+  function formatDate(date) {
     if (!date) return "";
+    if (typeof date === 'object' && typeof date._seconds === 'number') {
+      return new Date(date._seconds * 1000 + date._nanoseconds / 1e6).toLocaleString();
+    }
+    if (date instanceof Date) return date.toLocaleString();
+    if (typeof date === "string") return new Date(date).toLocaleString
+    return String(date);
+  }
 
-    if(typeof date === 'object' && typeof date._seconds === 'number' && typeof date._nanoseconds === 'number') {
-      const jsDate = new Date( date._seconds * 1000 + date._nanoseconds / 1e6);
-      return jsDate.toLocaleTimeString();
+  const fetchMessages = async (eventId, plannerId, vendorId) => {
+    try{
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const token = await user.getIdToken(true);
+
+      const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/chats/${eventId}/${plannerId}/${vendorId}/messages`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!res) throw new Error("Failed to fetch messages");
+      const data = await res.json();
+      return data.messages;
+    }catch(err){
+      console.error("Could not fetch messages");
+      alert("Failed to fetch messages");
+      return [];
+    }
+  };
+
+  const sendMessage = async (eventId, plannerId, vendorId, content) => {
+
+    try{
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const token = await user.getIdToken(true);
+
+      const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/chats/${eventId}/${plannerId}/${vendorId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(content)
+      });
+
+      if (!res) throw new Error("Failed to send message") ;
+    }catch(err){
+      console.error(err);
     }
 
-    // Already a JS Date
-    if (date instanceof Date) {
-      return date.toLocaleTimeString();
-    }
+  };
 
-    // String
-    if (typeof date === "string") {
-      return new Date(date).toLocaleTimeString();
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    return String(date); // fallback
-}
+  const loadMessages = async () => {
+    const mess = await fetchMessages(eventId, plannerId, vendorId);
+    if (!mess) return alert("Failed to fetch messages");
+    setMessages(mess);
+  };
 
-    const fetchMessages = async( eventId, plannerId, vendorId) => {
-            const auth = getAuth();
-            const user = auth.currentUser;
-            const token = await user.getIdToken(true);
+  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => { loadMessages(); }, []);
 
-            const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/chats/${eventId}/${plannerId}/${vendorId}/messages`, {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
 
-            if(!res){
-                console.error("Could not fetch messages");
-            }
-            const data = await res.json();
-            return data.messages;
-    }
-
-    const sendMessage = async(eventId, plannerId, vendorId, content) => {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const token = await user.getIdToken(true);
-
-        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/chats/${eventId}/${plannerId}/${vendorId}/messages`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(content)
-        });
-
-        if(!res){
-            const err = await res.json();
-            console.log(err);
-        }
-
-    }
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const message = {
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderType: currentUser.type,
+      content: newMessage.trim(),
+      timestamp: new Date(),
+      status: 'sent'
     };
 
-    const loadMessages = async () => {
-        const mess = await fetchMessages(eventId, plannerId, vendorId);
-        if(!mess){
-            alert("Failed to fetch messages");
-            return;
-        }
-        setMessages(mess);
-        console.log("Messages: ", messages);
+    await sendMessage(eventId, plannerId, vendorId, message);
+    setMessages(prev => [...prev, message]);
+    setNewMessage('');
+
+    setTimeout(() => {
+      setMessages(prev =>
+        prev.map(msg => msg.id === message.id ? { ...msg, status: 'delivered' } : msg)
+      );
+    }, 1000);
+  };
+
+  const getMessageStatus = (status) => {
+    switch (status) {
+      case 'sent': return <Check className="chat-message-status" size={14} />;
+      case 'delivered': return <CheckCheck className="chat-message-status" size={14} />;
+      case 'read': return <CheckCheck className="chat-message-status chat-message-status-read" size={14} />;
+      default: return <Clock className="chat-message-status" size={14} />;
     }
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    useEffect(() => {
-        console.log("IDS: VENDOR: ", vendorId, "PLANNER: ", plannerId, "EVENT: ", eventId);
-        loadMessages();
-    }, [])
-
-
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if (newMessage.trim()) {
-        const message = {
-            id: Date.now().toString(),
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            senderType: currentUser.type,
-            content: newMessage.trim(),
-            timestamp: new Date(),
-            status: 'sent'
-        };
-
-        const res = await sendMessage(eventId, plannerId, vendorId, message);
-        
-        setMessages(prev => [...prev, message]);
-        setNewMessage('');
-        
-        // Simulate message delivery
-        setTimeout(() => {
-            setMessages(prev => 
-            prev.map(msg => 
-                msg.id === message.id 
-                ? { ...msg, status: 'delivered' }
-                : msg
-            )
-            );
-        }, 1000);
-        }
-    };
-
-    const formatTime = (timestamp) => {
-        return new Date(timestamp).toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-        });
-    };
-
-    const getMessageStatus = (status) => {
-        switch (status) {
-        case 'sent':
-            return <Check className="message-status" size={14} />;
-        case 'delivered':
-            return <CheckCheck className="message-status" size={14} />;
-        case 'read':
-            return <CheckCheck className="message-status read" size={14} />;
-        default:
-            return <Clock className="message-status" size={14} />;
-        }
-    };
+  };
 
   return (
     <section className='chat-container-overlay'>
-        <section className="chat-container" role="main" aria-label="Chat conversation">
-        <header className="chat-header">
-            <section className="chat-participants">
-            <section className="participant">
-                {currentUser.type === 'vendor' ? <Building2 size={20} /> : <User size={20} />}
-                <span>{currentUser.name}</span>
-                <span className="participant-type">({currentUser.type})</span>
+      <section data-testid="chat-component" className="chat-container" role="main" aria-label="Chat conversation">
+        <header data-testid="chat-header" className="chat-header">
+          <section className="chat-participants">
+            <section className="chat-participant">
+              {currentUser.type === 'vendor' ? <Building2 size={20} /> : <User size={20} />}
+              <span data-testid ="curr-name">{currentUser.name}</span>
+              <span className="chat-participant-type">({currentUser.type})</span>
             </section>
-            <section className="chat-sectionider">↔</section>
-            <section className="participant">
-                {otherUser.type === 'vendor' ? <Building2 size={20} /> : <User size={20} />}
-                <span>{otherUser.name}</span>
-                <span className="participant-type">({otherUser.type})</span>
+            <span className="chat-divider">↔</span>
+            <section className="chat-participant">
+              {otherUser.type === 'vendor' ? <Building2 size={20} /> : <User size={20} />}
+              <span data-testid="other-name">{otherUser.name}</span>
+              <span className="chat-participant-type">({otherUser.type})</span>
             </section>
-            </section>
-            <section className="service-context">
-            <button onClick={() => closeChat()}><X/></button>
-            </section>
+          </section>
+          <section className="chat-service-context">
+            <button data-testid="close-chat"onClick={() => closeChat()}>
+              <X />
+            </button>
+          </section>
         </header>
 
-        <main className="messages-container" role="log" aria-label="Chat messages">
-            <section className="messages-list">
-            {messages.map((message) => (
-                <article 
-                key={message.id}
-                className={`message ${message.senderId === currentUser.id ? 'sent' : 'received'}`}
-                aria-label={`Message from ${message.senderName}`}
+        <main className="chat-messages-container" role="log" aria-label="Chat messages">
+          <section className="chat-messages-list">
+            {messages.map((message) => {
+              const isCurrentUser = message.senderName === currentUser.name;
+              console.log(isCurrentUser);
+              return (
+                <article
+                  key={message.id}
+                  className={`chat-message ${isCurrentUser ? 'chat-message-sent' : 'chat-message-received'}`}
+                  aria-label={`Message from ${message.senderName}`}
                 >
-                <section className="message-content">
-                    <section className="message-header">
-                    <span className="sender-name">{message.senderName}</span>
-                    <span className="sender-type">({message.senderType})</span>
-                    <time className="message-time" dateTime={formatDate(message.createdAt)}>
+                  <section className={`chat-message-content ${isCurrentUser ? 'chat-message-content-sent' : 'chat-message-content-received'}`}>
+                    <section className="chat-message-header">
+                      <span className="chat-sender-name">{message.senderName}</span>
+                      <span className="chat-sender-type">({message.senderType})</span>
+                      <time className="chat-message-time" dateTime={formatDate(message.createdAt)}>
                         {formatDate(message.createdAt)}
-                    </time>
+                      </time>
                     </section>
-                    <section className="message-text">{message.content}</section>
-                    {message.senderId === currentUser.id && (
-                    <section className="message-status-container">
+                    <section className="chat-message-text">{message.content}</section>
+                    {isCurrentUser && (
+                      <section className="chat-message-status-container">
                         {getMessageStatus(message.status)}
-                    </section>
+                      </section>
                     )}
-                </section>
+                  </section>
                 </article>
-            ))}
-            
+              );
+            })}
+
             {isTyping && (
-                <section className="typing-indicator" aria-label={`${otherUser.name} is typing`}>
-                <section className="typing-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+              <section className="chat-typing-indicator" aria-label={`${otherUser.name} is typing`}>
+                <section className="chat-typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
                 </section>
-                <span className="typing-text">{otherUser.name} is typing...</span>
-                </section>
+                <span className="chat-typing-text">{otherUser.name} is typing...</span>
+              </section>
             )}
-            
-            <section ref={messagesEndRef} />
-            </section>
+
+            <div ref={messagesEndRef} />
+          </section>
         </main>
 
-        <footer className="message-input-container">
-            <form onSubmit={handleSendMessage} className="message-form">
-            <label htmlFor="message-input" className="sr-only">
-                Type your message
-            </label>
+        <footer className="chat-message-input-container">
+          <form onSubmit={handleSendMessage} className="chat-message-form">
             <textarea
-                id="message-input"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={`Message ${otherUser.name}...`}
-                className="message-input"
-                rows="1"
-                onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage(e);
-                }
-                }}
-                aria-describedby="message-help"
+              data-testid="message-input-area"
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder={`Message ${otherUser.name}...`}
+              className="chat-message-input"
+              rows={1}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) handleSendMessage(e); }}
+              aria-label="Type your message"
             />
-            <section id="message-help" className="sr-only">
-                Press Enter to send, Shift+Enter for new line
-            </section>
-            <button 
-                type="submit" 
-                className="send-button"
-                disabled={!newMessage.trim()}
-                aria-label="Send message"
+            <button
+              data-testid="send-button"
+              type="submit"
+              className="chat-send-button"
+              disabled={!newMessage.trim()}
+              aria-label="Send message"
             >
-                <Send size={20} />
+              <Send size={20} />
             </button>
-            </form>
+          </form>
         </footer>
-        </section>
+      </section>
     </section>
   );
 };

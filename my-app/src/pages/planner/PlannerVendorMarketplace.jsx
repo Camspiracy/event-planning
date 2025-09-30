@@ -2,13 +2,37 @@ import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
 import './PlannerVendorMarketplace.css';
 import { X, MapPin, Phone, Mail, AlertCircle, Clock, DollarSign, Users, Square, Calendar, FileText } from 'lucide-react';
+import InformationToolTip from './InformationToolTip';
+import ChatComponent from './ChatComponent';
+import ConfirmPopup from './ConfirmPopup';
+
+function formatDate(date) {
+    if (!date) return "";
+
+    if(typeof date === 'object' && typeof date._seconds === 'number' && typeof date._nanoseconds === 'number') {
+        const jsDate = new Date( date._seconds * 1000 + date._nanoseconds / 1e6);
+        return jsDate.toLocaleString();
+    }
+
+    // Already a JS Date
+    if (date instanceof Date) {
+        return date.toLocaleString();
+    }
+
+    // String
+    if (typeof date === "string") {
+        return new Date(date).toLocaleString();
+    }
+
+    return String(date); // fallback
+}
 
 function VendorCard({ vendor, onViewMore, onAddVendor }) {
     return (
-        <article className="vendor-card">
+        <article data-testid="vendor-card" className="vendor-card">
             <img src={vendor.profilePic} alt={vendor.businessName} className="vendor-image" />
             <section className="vendor-content">
-                <h3 className="vendor-name">{vendor.businessName || vendor.name}</h3>
+                <h3 className="vendor-name">{vendor.businessName}</h3>
                 <section className="vendor-details">
                     <span className="vendor-category">{vendor.category}</span>
                     <section className="vendor-meta">
@@ -29,12 +53,11 @@ function VendorCard({ vendor, onViewMore, onAddVendor }) {
 function EventSelectionModal({ isOpen, events, onSelect, onClose, purpose}) {
     if (!isOpen) return null;
 
-
     return (
         <section className="modal-overlay" onClick={onClose}>
             <section className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <header className="modal-header">
-                    <h2>Select Event</h2>
+                    <h2>{purpose === 'chat' ? 'Select Event for Chat' : 'Select Event'}</h2>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </header>
                <main className="modal-body">
@@ -53,7 +76,7 @@ function EventSelectionModal({ isOpen, events, onSelect, onClose, purpose}) {
                         >
                             <strong>{event.name}</strong>
                             <span className="event-date">
-                            {new Date(event.date).toLocaleDateString()}
+                            {formatDate(event.date)}
                             </span>
                         </button>
                         </li>
@@ -66,7 +89,7 @@ function EventSelectionModal({ isOpen, events, onSelect, onClose, purpose}) {
     );
 }
 
-function VendorModal({vendor, onClose, addService }) {
+function VendorModal({vendor, onClose, addService, onContactVendor}) {
 
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -86,7 +109,7 @@ function VendorModal({vendor, onClose, addService }) {
 
   return (
     <section className="vendor-modal-overlay">
-      <section className="vendor-modal-container">
+      <section data-testid="vendor-view-more-modal" className="vendor-modal-container">
         {/* Header */}
         <section className="vendor-modal-header">
           <button onClick={onClose} className="vendor-modal-close-btn">
@@ -160,8 +183,7 @@ function VendorModal({vendor, onClose, addService }) {
                   <section className="vendor-modal-service-header">
                     <h3>{service.serviceName}</h3>
                     <section className="vendor-modal-service-price">
-                      <span>{getChargeAmount(service)}</span>
-                      <small>{formatChargeType(service)}</small>
+                      <span>{getChargeAmount(service)} {formatChargeType(service)}</span>
                     </section>
                   </section>
 
@@ -176,9 +198,13 @@ function VendorModal({vendor, onClose, addService }) {
                     <span>Base: R {service.cost}</span>
                   </section>
                   <section>
+                    <InformationToolTip 
+                    content={"Clicking this button will add this service to your event as pending.\nContact and chat with the vendor to confirm this service."}
+                    top={"-20%"} left ={"275%"} minWidth={"400px"}>
                     <button className='vendor-modal-footer-btn-primary' onClick={() => addService(vendor, service)}>
-                        Add Service
+                        Track Service
                     </button>
+                    </InformationToolTip>
                   </section>
                 </section>
               ))}
@@ -191,15 +217,14 @@ function VendorModal({vendor, onClose, addService }) {
           <button onClick={onClose} className="vendor-modal-footer-btn">
             Close
           </button>
-          <button className="vendor-modal-footer-btn-primary">Contact Vendor</button>
+          <button className="vendor-modal-footer-btn-primary" onClick={() => onContactVendor(vendor)}>Contact Vendor</button>
         </section>
       </section>
     </section>
   );
 }
 
-
-export default function PlannerVendorMarketplace({ event = null, plannerId, setActivePage }) {
+export default function PlannerVendorMarketplace({ event = null, plannerId}) {
 
     const [activeTab, setActiveTab] = useState(event ? 'event-specific' : 'all-events');
     const [search, setSearch] = useState("");
@@ -216,8 +241,10 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
     const [modalPurpose, setModalPurpose] = useState(null);
     const [notification, setNotification] = useState({ show: false, type: '', message: '' });
     const [service, setService] = useState(null);
+    const [showChat, setShowChat] = useState(false);
+    const [chatInfo, setChatInfo] = useState(null);
+    const [pendingChatVendor, setPendingChatVendor] = useState(null);
     
-
     //All calls to api here
     const fetchAllEventsVendors = async () => {
         const auth = getAuth();
@@ -235,6 +262,7 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
         const data = await res.json();
         return data.vendors || [];
     };
+
     const fetchEventSpecificVendors = async (eventId) => {
         const auth = getAuth();
         const user = auth.currentUser;
@@ -288,26 +316,33 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
         catch(err) {
             console.error("Error adding vendor to event:", err);
         }
-
     };
 
     const fetchVendorServices = async (vendorId) => {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const token = await user.getIdToken(true);
 
-        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/vendors/${vendorId}/services`, {
-            headers: {
-                "Authorization": `Bearer ${token}`
+        try{
+            const auth = getAuth();
+            const user = auth.currentUser;
+            const token = await user.getIdToken(true);
+
+            const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/vendors/${vendorId}/services`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if(!res){
+                throw new Error("Failed to fetch vendor services");
             }
-        });
 
-        if(!res){
-            showNotification("error", "Failed to fetch vendor services");
+            const data = await res.json();
+            return data;
+
+        } catch(err){
+            console.error(err);
+            alert("Failed to fetch vendor services");
         }
-        const data = await res.json();
 
-        return data;
     };
 
     const addService = async (eventId, service) => {
@@ -392,7 +427,6 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
     };
 
     const handleViewVendor = async (vendor) => {
-
         const services = await fetchVendorServices(vendor.id);
         console.log(services);
         if(services === null){
@@ -448,9 +482,61 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
             alert("Failed to add service");
         }
         else{
-            alert("Services Addedd successfully");
+            alert("Services Added successfully");
         }
     }
+
+    const handleContactVendor = async (vendor) => {
+        // Option 1 flow: Check if we have event context
+        if (activeTab === 'event-specific' && selectedEvent) {
+            // Direct chat with event context
+            openChat(vendor, selectedEvent);
+        } else {
+            // Show event selection modal for chat
+            setPendingChatVendor(vendor);
+            const eventsList = await fetchEvents();
+            setEvents(eventsList);
+            setModalPurpose('chat');
+            setShowEventModal(true);
+        }
+    };
+
+    const openChat = (vendor, event) => {
+        const auth = getAuth();
+        const currentUserId = plannerId || auth.currentUser?.uid;
+        
+        const chatData = {
+            plannerId: currentUserId,
+            vendorId: vendor.id,
+            eventId: event.id,
+            currentUser: {
+                id: currentUserId,
+                name: event.name, // Using event name as requested
+                type: 'planner'
+            },
+            otherUser: {
+                id: vendor.id,
+                name: vendor.businessName || vendor.name,
+                type: 'vendor'
+            }
+        };
+        
+        setChatInfo(chatData);
+        setShowChat(true);
+        setShowVendorModal(false); // Close vendor modal if open
+    };
+
+    const handleEventSelectionForChat = (selectedEventData) => {
+        if (pendingChatVendor) {
+            openChat(pendingChatVendor, selectedEventData);
+            setPendingChatVendor(null);
+        }
+    };
+
+    const handleCloseChat = () => {
+        setShowChat(false);
+        setChatInfo(null);
+    };
 
     const filteredVendors = vendors.filter(v =>
         ((v.businessName?.toLowerCase().includes(search.toLowerCase()) || 
@@ -463,7 +549,18 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
     const categories = ["All", "Catering", "Entertainment", "Decor", "Photography", "Venue", "Florist", "Music"];
 
     return (
-        <main className="vendor-marketplace">
+        <main data-testid="planner-vendor-marketplace" className="vendor-marketplace">
+            {showChat && chatInfo && (
+                <ChatComponent
+                    plannerId={chatInfo.plannerId}
+                    vendorId={chatInfo.vendorId}
+                    eventId={chatInfo.eventId}
+                    currentUser={chatInfo.currentUser}
+                    otherUser={chatInfo.otherUser}
+                    closeChat={handleCloseChat}
+                />
+            )}
+            
         {/* Custom Notification */}
       {notification.show && (
         <section className={`ps-notification ps-notification-${notification.type}`}>
@@ -505,7 +602,7 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
                         {selectedEvent ? (
                             <>
                                 <strong>{selectedEvent.name}</strong>
-                                <span>{new Date(selectedEvent.date).toLocaleDateString()}</span>
+                                <span>{formatDate(selectedEvent.date)}</span>
                             </>
                         ) : (
                             "Choose an event..."
@@ -570,8 +667,11 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
             <EventSelectionModal
                 isOpen={showEventModal}
                 events={events}
+                purpose={modalPurpose}
                 onSelect={async (event) => {
-                    if (pendingVendorId) {
+                    if (modalPurpose === 'chat') {
+                        handleEventSelectionForChat(event);
+                    } else if (pendingVendorId) {
                         await handleAddVendor(event, { id: pendingVendorId });
                         await handleAddService(event.id, selectedVendorForModal, service);
                         setPendingVendorId(null);
@@ -579,18 +679,25 @@ export default function PlannerVendorMarketplace({ event = null, plannerId, setA
                         handleEventSelect(event);
                     }
                     setShowEventModal(false);
+                    setModalPurpose(null);
                 }}
-                onClose={() => setShowEventModal(false)}
+                onClose={() => {
+                    setShowEventModal(false);
+                    setPendingChatVendor(null);
+                    setModalPurpose(null);
+                }}
             />
 
-             {showVendorModal && (<VendorModal
-                vendor={selectedVendorForModal}
-                addService={handleEventPicked}
-                onClose={() => {
-                    setShowVendorModal(false);
-                    setSelectedVendor(null);
-                    setSelectedVendorForModal(null);
-                }}
+             {showVendorModal && (
+                <VendorModal
+                    vendor={selectedVendorForModal}
+                    addService={handleEventPicked}
+                    onContactVendor={handleContactVendor}
+                    onClose={() => {
+                        setShowVendorModal(false);
+                        setSelectedVendor(null);
+                        setSelectedVendorForModal(null);
+                    }}
                 />
             )}
         </main>

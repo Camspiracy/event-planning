@@ -12,8 +12,9 @@ export default function AdminGate() {
 			// Wait for the auth state to be confirmed
 			const user = await new Promise((resolve) => {
 				const unsubscribe = auth.onAuthStateChanged((user) => {
-					unsubscribe();
 					resolve(user);
+					unsubscribe();
+					
 				});
 			});
 

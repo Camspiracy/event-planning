@@ -1,33 +1,31 @@
-/* src/vendor/vendorReviews.css */
-
-/* Page Container */
 .vendor-reviews-page {
   min-height: 100vh;
   padding: 2rem;
   font-family: "Inter", sans-serif;
-  color: #1f2937; /* dark text to match profile page */
-  
+  color: #1f2937;
 }
 
-.review-page-title{
-    margin-bottom: 4rem;
-    padding-bottom: 2rem;
+.review-page-title {
+  margin-bottom: 4rem;
+  padding-bottom: 2rem;
 }
-/* Page Title */
-.review-page-title h2{
+
+.review-page-title h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 1.5rem;
-  margin-left: -2rem; 
-  margin-top: -2rem;
+  margin-bottom: 0.5rem;
+  margin-left: -1rem;
+  margin-top: 0rem;
 }
 
-.review-page-title p{
-font-size: 1rem;
-  margin-top: -1.5rem;
+.review-page-title p {
+  font-size: 1rem;
   color: #6b7280;
-  margin-left: -2rem; 
+  margin-left: -1rem;
+  margin-top: 0;
+  padding-top: 0;
 }
+
 /* Overall Rating */
 .overall-rating {
   text-align: center;
@@ -35,29 +33,27 @@ font-size: 1rem;
 }
 
 .overall-rating p {
-  font-size: 1rem;
-  color: #6b7280; 
   font-size: 1.3rem;
+  color: #6b7280;
   margin-bottom: 0.25rem;
 }
-
 
 .overall-rating h1 {
   font-size: 3rem;
   font-weight: 700;
-  color: #fff; 
+  color: #fff;
   margin: 0 auto;
-  width: 100px;      
-  height: 100px;    
+  width: 100px;
+  height: 100px;
   line-height: 100px;
-  border-radius: 50%;  
-  background-color: #000; 
+  border-radius: 50%;
+  background-color: #000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-
+/* Rating Bars */
 .rating-bars {
   max-width: 500px;
   margin: 1rem auto 3rem auto;
@@ -81,10 +77,11 @@ font-size: 1rem;
 .rating-progress {
   flex-grow: 1;
   height: 12px;
-  background-color: #e5e7eb; 
+  background-color: #e5e7eb;
   border-radius: 999px;
   overflow: hidden;
   margin-left: 0.5rem;
+  border: 1px solid #3b82f6;
 }
 
 .rating-progress-fill {
@@ -93,11 +90,11 @@ font-size: 1rem;
 }
 
 .rating-excellent {
-  background-color: #22c55e; 
+  background-color: #22c55e;
 }
 
 .rating-good {
-  background-color: #3b82f6; 
+  background-color: #3b82f6;
 }
 
 .rating-average {
@@ -105,16 +102,20 @@ font-size: 1rem;
 }
 
 .rating-poor {
-  background-color: #ef4444; 
+  background-color: #ef4444;
 }
 
+.rating-count {
+  font-size: 0.875rem;
+  margin-left: 0.5rem; /* Added to increase spacing between bar and count */
+}
 
+/* Review List */
 .review-list {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
-
 
 .review-card {
   background-color: #fff;
@@ -128,16 +129,16 @@ font-size: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-
-.review-stars {
+/* Stars + Review Text */
+.star-rating {
   display: flex;
-  gap: 0.25rem;
+  gap: 2px;
   margin-bottom: 0.75rem;
 }
 
 .review-comment {
   font-size: 0.875rem;
-  color: #374151; 
+  color: #374151;
   margin-bottom: 0.75rem;
 }
 
@@ -148,7 +149,86 @@ font-size: 1rem;
   margin-bottom: 0.5rem;
 }
 
+/* Reply Section */
+.review-reply {
+  margin-top: 0.75rem;
+  background: #f3f4f6;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
 
+.review-reply strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #1f2937;
+}
+
+.review-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.review-reply button,
+.reply-form button {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  border: 1px solid #3b82f6;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #3b82f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.review-reply button:hover,
+.reply-form button:hover {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* Reply input */
+.reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.reply-form input {
+  flex-grow: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.85rem;
+}
+
+/* Loading Spinner */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.spinner {
+  border: 3px solid #f1f5f9;
+  border-top: 3px solid #2563eb;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
 @media (max-width: 1024px) {
   .review-list {
     grid-template-columns: repeat(2, 1fr);

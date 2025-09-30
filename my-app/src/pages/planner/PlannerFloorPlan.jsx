@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { auth } from "../../firebase"; // your firebase auth
+import { getAuth } from "firebase/auth";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getFirestore, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { v4 as uuidv4 } from "uuid";
 import "./PlannerFloorPlan.css";
 
 const TEMPLATES = [
@@ -30,57 +33,147 @@ const ITEM_PROTOTYPES = {
 
 let nextId = 1;
 
-const PlannerFloorPlan = ({ eventId, setActivePage }) => {
-  const [venues, setVenues] = useState([]);
-  const [selectedVenue, setSelectedVenue] = useState("");
+const PlannerFloorPlan = ({ eventId: initialEventId, setActivePage }) => {
+  const [events, setEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId || "");
+  const [vendors, setVendors] = useState([]);
+  const [selectedVendor, setSelectedVendor] = useState("");
   const [template, setTemplate] = useState(TEMPLATES[0].id);
-  const [items, setItems] = useState([]); // {id, type, x, y, w, h, shape, color, rotation}
+  const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [backgroundImage, setBackgroundImage] = useState(null);
   const containerRef = useRef(null);
-
-  // Drag state refs to avoid re-renders
-  const dragRef = useRef({ 
-    dragging: false, 
-    id: null, 
-    offsetX: 0, 
+  const user = getAuth().currentUser;
+  
+  const dragRef = useRef({
+    dragging: false,
+    rotating: false,
+    id: null,
+    offsetX: 0,
     offsetY: 0,
     pointerId: null,
     startX: 0,
-    startY: 0 
+    startY: 0,
+    initialAngle: 0,
+    touchAngle: 0,
   });
 
-  // Fetch venues (unchanged)
+  // Fetch planner's events
   useEffect(() => {
-    const fetchVenues = async () => {
+    const fetchEvents = async () => {
       try {
-        const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
-        const res = await fetch("/api/venues", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) {
-          setVenues([
-            { id: "venue1", name: "Grand Hall" },
-            { id: "venue2", name: "Beach Resort" },
-            { id: "venue3", name: "Conference Center" },
-          ]);
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) {
+          console.warn("No authenticated user, skipping event fetch");
+          setEvents([]);
           return;
         }
+        const token = await user.getIdToken(true);
+        console.log("Fetching events from https://us-central1-planit-sdp.cloudfunctions.net/api/planner/me/events");
+        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/me/events`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          console.error(`Fetch events failed with status ${res.status}: ${text.slice(0, 100)}...`);
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const data = await res.json();
-        setVenues(data.venues || []);
+        console.log("Events fetched:", data);
+        setEvents(data.events || []);
+        if (!selectedEventId && data.events?.length > 0) {
+          setSelectedEventId(data.events[0].id);
+        }
       } catch (err) {
-        console.error("Fetch venues failed, using fallback", err);
-        setVenues([
-          { id: "venue1", name: "Grand Hall" },
-          { id: "venue2", name: "Beach Resort" },
-          { id: "venue3", name: "Conference Center" },
-        ]);
+        console.error("Fetch events error:", err.message);
+        setEvents([]);
+        alert("Failed to fetch events. Please try again.");
       }
     };
-    fetchVenues();
+    fetchEvents();
   }, []);
 
-  // Add a new item (centered)
+  // Fetch vendors when selectedEventId changes
+  useEffect(() => {
+    if (!selectedEventId) {
+      setVendors([]);
+      setSelectedVendor("");
+      return;
+    }
+    const fetchVendors = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        const token = user ? await user.getIdToken(true) : "";
+        console.log(`Fetching vendors for event ${selectedEventId}`);
+        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${selectedEventId}/vendors`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          console.error(`Fetch vendors failed with status ${res.status}: ${text.slice(0, 100)}...`);
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+        console.log("Vendors fetched:", data);
+        if (data.message === "No vendors found for this event") {
+          setVendors([]);
+        } else {
+          setVendors(data.vendors || []);
+        }
+      } catch (err) {
+        console.error("Fetch vendors error:", err.message);
+        setVendors([]);
+        alert("Failed to fetch vendors. Please try again.");
+      }
+    };
+    fetchVendors();
+  }, [selectedEventId]);
+
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Invalid file type. Please upload an image (JPEG, PNG, GIF, or WebP).");
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("File is too large. Please upload an image smaller than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setBackgroundImage(event.target.result);
+      setIsDirty(true);
+      console.log("Image uploaded:", { type: file.type, size: file.size });
+    };
+    reader.onerror = () => {
+      alert("Failed to read the image file.");
+      console.error("Image read error");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Clear background image
+  const clearBackgroundImage = () => {
+    setBackgroundImage(null);
+    setIsDirty(true);
+  };
+
   const addItem = (key) => {
     const proto = ITEM_PROTOTYPES[key];
     const container = containerRef.current;
@@ -98,7 +191,6 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     setIsDirty(true);
   };
 
-  // Remove selected item
   const removeSelected = () => {
     if (!selectedId) return;
     setItems((prev) => prev.filter((it) => it.id !== selectedId));
@@ -106,7 +198,6 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     setIsDirty(true);
   };
 
-  // Pointer handlers for drag (improved for re-selection and click detection)
   const onPointerDownItem = (e, id) => {
     e.preventDefault();
     e.stopPropagation();
@@ -118,66 +209,204 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     const mouseY = e.clientY - rect.top;
     const it = items.find((i) => i.id === id);
     if (!it) return;
-    
-    // Always select the item on down
+
     setSelectedId(id);
-    
-    // Record start position to detect if it's a click or drag
+    const isRotating = e.shiftKey;
+    const initialAngle = isRotating
+      ? Math.atan2(mouseY - it.y, mouseX - it.x) * (180 / Math.PI)
+      : 0;
+
     dragRef.current = {
-      dragging: false,
+      dragging: !isRotating,
+      rotating: isRotating,
       id,
       offsetX: mouseX - it.x,
       offsetY: mouseY - it.y,
       pointerId: e.pointerId,
       startX: mouseX,
       startY: mouseY,
+      initialAngle,
+      touchAngle: 0,
+    };
+  };
+
+  const onTouchStart = (e) => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    container.setPointerCapture(e.touches[0].identifier);
+    const rect = container.getBoundingClientRect();
+    const touch1 = { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    const touch2 = { x: e.touches[1].clientX - rect.left, y: e.touches[1].clientY - rect.top };
+    const it = items.find((i) => i.id === selectedId);
+    if (!it) return;
+
+    const dx = touch2.x - touch1.x;
+    const dy = touch2.y - touch1.y;
+    const initialAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    dragRef.current = {
+      dragging: false,
+      rotating: true,
+      id: selectedId,
+      offsetX: 0,
+      offsetY: 0,
+      pointerId: e.touches[0].identifier,
+      startX: (touch1.x + touch2.x) / 2,
+      startY: (touch1.y + touch2.y) / 2,
+      initialAngle,
+      touchAngle: initialAngle,
     };
   };
 
   const onPointerMove = (e) => {
     if (!dragRef.current.id || dragRef.current.pointerId !== e.pointerId) return;
-    
+
     const container = containerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
-    // Check if movement is enough to start dragging (threshold to distinguish click from drag)
-    const threshold = 5; // pixels
-    if (!dragRef.current.dragging && 
-        (Math.abs(mouseX - dragRef.current.startX) > threshold || 
-         Math.abs(mouseY - dragRef.current.startY) > threshold)) {
+
+    const threshold = 5;
+    if (
+      !dragRef.current.dragging &&
+      !dragRef.current.rotating &&
+      (Math.abs(mouseX - dragRef.current.startX) > threshold ||
+        Math.abs(mouseY - dragRef.current.startY) > threshold)
+    ) {
       dragRef.current.dragging = true;
     }
-    
-    if (!dragRef.current.dragging) return;
-    
-    const { id, offsetX, offsetY } = dragRef.current;
+
+    if (dragRef.current.dragging) {
+      const { id, offsetX, offsetY } = dragRef.current;
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === id
+            ? {
+                ...it,
+                x: Math.max(
+                  calculateBoundingHalf(it.w, it.h, it.rotation || 0, "w"),
+                  Math.min(
+                    rect.width - calculateBoundingHalf(it.w, it.h, it.rotation || 0, "w"),
+                    mouseX - offsetX
+                  )
+                ),
+                y: Math.max(
+                  calculateBoundingHalf(it.w, it.h, it.rotation || 0, "h"),
+                  Math.min(
+                    rect.height - calculateBoundingHalf(it.w, it.h, it.rotation || 0, "h"),
+                    mouseY - offsetY
+                  )
+                ),
+              }
+            : it
+        )
+      );
+      setIsDirty(true);
+    } else if (dragRef.current.rotating) {
+      const { id, initialAngle } = dragRef.current;
+      const it = items.find((i) => i.id === id);
+      if (!it) return;
+
+      const currentAngle = Math.atan2(mouseY - it.y, mouseX - it.x) * (180 / Math.PI);
+      const deltaAngle = (currentAngle - initialAngle + 360) % 360;
+      const newRotation = ((it.rotation || 0) + deltaAngle + 360) % 360;
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                rotation: newRotation,
+                x: Math.max(
+                  calculateBoundingHalf(item.w, item.h, newRotation, "w"),
+                  Math.min(rect.width - calculateBoundingHalf(item.w, item.h, newRotation, "w"), item.x)
+                ),
+                y: Math.max(
+                  calculateBoundingHalf(item.w, item.h, newRotation, "h"),
+                  Math.min(rect.height - calculateBoundingHalf(item.w, item.h, newRotation, "h"), item.y)
+                ),
+              }
+            : item
+        )
+      );
+      dragRef.current.initialAngle = currentAngle;
+      setIsDirty(true);
+    }
+  };
+
+  const onTouchMove = (e) => {
+    if (e.touches.length !== 2 || !dragRef.current.rotating || dragRef.current.id !== selectedId) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const touch1 = { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    const touch2 = { x: e.touches[1].clientX - rect.left, y: e.touches[1].clientY - rect.top };
+
+    const dx = touch2.x - touch1.x;
+    const dy = touch2.y - touch1.y;
+    const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+    const deltaAngle = (currentAngle - dragRef.current.touchAngle + 360) % 360;
+    const it = items.find((i) => i.id === selectedId);
+    if (!it) return;
+
+    const newRotation = ((it.rotation || 0) + deltaAngle + 360) % 360;
+
     setItems((prev) =>
-      prev.map((it) =>
-        it.id === id
+      prev.map((item) =>
+        item.id === selectedId
           ? {
-              ...it,
+              ...item,
+              rotation: newRotation,
               x: Math.max(
-                calculateBoundingHalf(it.w, it.h, it.rotation || 0, "w"),
-                Math.min(
-                  rect.width - calculateBoundingHalf(it.w, it.h, it.rotation || 0, "w"),
-                  mouseX - offsetX
-                )
+                calculateBoundingHalf(item.w, item.h, newRotation, "w"),
+                Math.min(rect.width - calculateBoundingHalf(item.w, item.h, newRotation, "w"), item.x)
               ),
               y: Math.max(
-                calculateBoundingHalf(it.w, it.h, it.rotation || 0, "h"),
-                Math.min(
-                  rect.height - calculateBoundingHalf(it.w, it.h, it.rotation || 0, "h"),
-                  mouseY - offsetY
-                )
+                calculateBoundingHalf(item.w, item.h, newRotation, "h"),
+                Math.min(rect.height - calculateBoundingHalf(item.w, item.h, newRotation, "h"), item.y)
               ),
             }
-          : it
+          : item
       )
     );
+    dragRef.current.touchAngle = currentAngle;
     setIsDirty(true);
+  };
+
+  const onPointerUp = (e) => {
+    if (dragRef.current.id && dragRef.current.pointerId === e.pointerId) {
+      dragRef.current = {
+        dragging: false,
+        rotating: false,
+        id: null,
+        offsetX: 0,
+        offsetY: 0,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        initialAngle: 0,
+        touchAngle: 0,
+      };
+    }
+  };
+
+  const onTouchEnd = () => {
+    dragRef.current = {
+      dragging: false,
+      rotating: false,
+      id: null,
+      offsetX: 0,
+      offsetY: 0,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      initialAngle: 0,
+      touchAngle: 0,
+    };
   };
 
   const calculateBoundingHalf = (w, h, rotation, dim) => {
@@ -189,27 +418,6 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     return dim === "w" ? bb_w / 2 : bb_h / 2;
   };
 
-  const onPointerUp = (e) => {
-    if (dragRef.current.id && dragRef.current.pointerId === e.pointerId) {
-      // If not dragged (click), we can do something if needed, but selection is already set
-      dragRef.current = { 
-        dragging: false, 
-        id: null, 
-        offsetX: 0, 
-        offsetY: 0, 
-        pointerId: null,
-        startX: 0,
-        startY: 0 
-      };
-    }
-  };
-
-  // Click on empty canvas does not deselect
-  const onCanvasClick = (e) => {
-    // Do nothing to prevent deselection
-  };
-
-  // Scale selected item
   const scaleSelected = (factor) => {
     if (!selectedId) return;
     setItems((prev) =>
@@ -232,7 +440,6 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     setIsDirty(true);
   };
 
-  // Rotate selected item
   const rotateSelected = (delta) => {
     if (!selectedId) return;
     setItems((prev) =>
@@ -254,10 +461,12 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     setIsDirty(true);
   };
 
-  // Export to PNG
-  const exportToPNG = () => {
+  const createFloorplanBlob = () => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      throw new Error("Canvas container not found");
+    }
+
     const rect = container.getBoundingClientRect();
     const canvas = document.createElement("canvas");
     const scale = 2;
@@ -265,25 +474,50 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
     canvas.height = Math.round(rect.height * scale);
     const ctx = canvas.getContext("2d");
 
-    // Background
-    const tpl = TEMPLATES.find((t) => t.id === template) || TEMPLATES[0];
-    ctx.fillStyle = tpl.color || "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Draw background (template or uploaded image)
+    if (backgroundImage) {
+      const img = new Image();
+      img.src = backgroundImage;
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          drawCanvasContent(ctx, scale);
+          resolve({
+            base64Data: canvas.toDataURL("image/png", 0.9).split(",")[1],
+            mimeType: "image/png",
+            fileName: `floorplan-${selectedEventId || "event"}.png`,
+          });
+        };
+        img.onerror = () => reject(new Error("Failed to load background image"));
+      });
+    } else {
+      const tpl = TEMPLATES.find((t) => t.id === template) || TEMPLATES[0];
+      ctx.fillStyle = tpl.color || "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawCanvasContent(ctx, scale);
+      return Promise.resolve({
+        base64Data: canvas.toDataURL("image/png", 0.9).split(",")[1],
+        mimeType: "image/png",
+        fileName: `floorplan-${selectedEventId || "event"}.png`,
+      });
+    }
+  };
 
+  const drawCanvasContent = (ctx, scale) => {
     // Draw grid
     ctx.strokeStyle = "#e6e6e6";
     ctx.lineWidth = 1;
     const gridStep = 25 * scale;
-    for (let x = 0; x < canvas.width; x += gridStep) {
+    for (let x = 0; x < ctx.canvas.width; x += gridStep) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(x, ctx.canvas.height);
       ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += gridStep) {
+    for (let y = 0; y < ctx.canvas.height; y += gridStep) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      ctx.lineTo(ctx.canvas.width, y);
       ctx.stroke();
     }
 
@@ -294,6 +528,7 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
       const w = Math.round(it.w * scale);
       const h = Math.round(it.h * scale);
       const rotation = (it.rotation || 0) * (Math.PI / 180);
+
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(rotation);
@@ -307,9 +542,10 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
         ctx.fillRect(-w / 2, -h / 2, w, h);
       }
 
-      // Label
       if (it.type !== "chair" && it.type !== "light") {
-        ctx.fillStyle = ["piano", "stage", "drink_bar", "walkway_carpet", "catering_stand", "exit_door", "head_table"].includes(it.type) ? "#fff" : "#000";
+        ctx.fillStyle = ["piano", "stage", "drink_bar", "walkway_carpet", "catering_stand", "exit_door", "head_table"].includes(it.type)
+          ? "#fff"
+          : "#000";
         const fontSize = (Math.min(it.w, it.h) < 50 ? 10 : 12) * scale;
         ctx.font = `${fontSize}px sans-serif`;
         ctx.textAlign = "center";
@@ -318,75 +554,134 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
       }
       ctx.restore();
     });
-
-    // Download
-    const dataUrl = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `floorplan-${eventId || "event"}-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    return dataURLtoBlob(dataUrl);
   };
 
-  // Convert dataUrl to blob
-  const dataURLtoBlob = (dataurl) => {
-    const arr = dataurl.split(",");
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) u8arr[n] = bstr.charCodeAt(n);
-    return new Blob([u8arr], { type: mime });
-  };
+  const uploadToVendor = async () => {
+    if (!selectedEventId) {
+      alert("Please choose an event first.");
+      return;
+    }
+    if (!selectedVendor) {
+      alert("Please choose a vendor to upload to.");
+      return;
+    }
 
-  // Upload floorplan PNG to a venue
-  const uploadToVenue = async () => {
-    if (!selectedVenue) {
-      alert("Please choose a venue to upload to.");
-      return;
-    }
-    if (!eventId) {
-      alert("Missing eventId — upload requires an event context.");
-      return;
-    }
     try {
-      const blob = exportToPNG();
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const fd = new FormData();
-      fd.append("file", blob, `floorplan-${eventId}.png`);
-      fd.append("eventId", eventId);
-      fd.append("venueId", selectedVenue);
-
-      const res = await fetch(`/api/event/${eventId}/venue/${selectedVenue}/floorplan`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Upload failed");
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) {
+        console.error("No authenticated user");
+        alert("Please log in to upload the floorplan.");
+        return;
       }
 
-      const data = await res.json();
-      alert(data.message || "Uploaded successfully");
+      const { base64Data, mimeType, fileName } = await createFloorplanBlob();
+      console.log("Preparing floorplan upload:", {
+        eventId: selectedEventId,
+        vendorId: selectedVendor,
+        base64Length: base64Data.length,
+        mimeType,
+        fileName,
+      });
+
+      // Convert base64 to Blob
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+
+      // Upload to Firebase Storage
+      const storage = getStorage();
+      const storageFileName = `Floorplans/${selectedEventId}/${selectedVendor}/${uuidv4()}-${fileName}`;
+      const storageRef = ref(storage, storageFileName);
+      console.log("Uploading to Storage:", storageFileName);
+
+      await uploadBytes(storageRef, blob, {
+        contentType: mimeType,
+        customMetadata: {
+          uploadedBy: user.uid,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+      console.log("File uploaded to Storage");
+
+      const floorplanUrl = await getDownloadURL(storageRef);
+      console.log("File URL:", floorplanUrl);
+
+      // Save to Firestore
+      const db = getFirestore();
+      const floorplanRef = doc(db, "Event", selectedEventId, "Floorplans", selectedVendor);
+      console.log("Checking Firestore document:", floorplanRef.path);
+
+      const docSnap = await getDoc(floorplanRef);
+      if (!docSnap.exists()) {
+        console.log("Creating new Firestore document");
+        await setDoc(floorplanRef, {
+          floorplanUrl,
+          uploadedAt: new Date(),
+          uploadedBy: user.uid,
+        });
+        console.log(`Created new floorplan document for eventId=${selectedEventId}, vendorId=${selectedVendor}`);
+      } else {
+        console.log("Updating existing Firestore document");
+        await updateDoc(floorplanRef, {
+          floorplanUrl,
+          uploadedAt: new Date(),
+          uploadedBy: user.uid,
+        });
+        console.log(`Updated floorplan document for eventId=${selectedEventId}, vendorId=${selectedVendor}`);
+      }
+
+      alert("Floorplan uploaded successfully");
+      setIsDirty(false);
     } catch (err) {
-      console.error("Upload error", err);
-      alert("Upload failed: " + (err.message || err));
+      console.error("Upload error:", err.message, err.stack, {
+        eventId: selectedEventId,
+        vendorId: selectedVendor,
+        user: user? { uid: user.uid, email: user.email } : "No user",
+      });
+      alert("Upload failed: " + err.message);
     }
   };
 
-  // Save/Load local
+  const exportToPNG = async () => {
+    try {
+      const { base64Data, fileName } = await createFloorplanBlob();
+      const dataUrl = `data:image/png;base64,${base64Data}`;
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (error) {
+      console.error("Export to PNG failed:", error);
+      alert("Failed to export floorplan: " + error.message);
+    }
+  };
+
   const saveLocal = () => {
-    localStorage.setItem(`floorplan-${eventId || "anon"}`, JSON.stringify({ template, items }));
+    if (!selectedEventId) {
+      alert("Please select an event to save the draft.");
+      return;
+    }
+    localStorage.setItem(
+      `floorplan-${selectedEventId}`,
+      JSON.stringify({ template, items, backgroundImage })
+    );
     setIsDirty(false);
     alert("Draft saved locally");
   };
 
   const loadLocal = () => {
-    const raw = localStorage.getItem(`floorplan-${eventId || "anon"}`);
+    if (!selectedEventId) {
+      alert("Please select an event to load the draft.");
+      return;
+    }
+    const raw = localStorage.getItem(`floorplan-${selectedEventId}`);
     if (!raw) return alert("No saved draft found");
     try {
       const obj = JSON.parse(raw);
@@ -394,9 +689,10 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
       if (Array.isArray(obj.items)) {
         setItems(obj.items.map((it) => ({ ...it, rotation: it.rotation ?? 0 })));
       }
+      if (obj.backgroundImage) setBackgroundImage(obj.backgroundImage);
       alert("Draft loaded");
     } catch (e) {
-      console.error(e);
+      console.error("Load draft failed:", e);
       alert("Failed to load draft");
     }
   };
@@ -412,18 +708,36 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
 
       <div className="floorplan-content">
         <aside className="floorplan-sidebar">
-          <h3>Choose venue</h3>
-          <div className="venue-list">
-            {venues.map((v) => (
-              <button
-                key={v.id}
-                className={`venue-item ${selectedVenue === v.id ? "selected" : ""}`}
-                onClick={() => setSelectedVenue(v.id)}
-              >
-                {v.name}
-              </button>
+          <h3>Choose Event</h3>
+          <select
+          data-testid="event-selector"
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+            className="event-select"
+          >
+            <option value="">Select an event</option>
+            {events.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.name || event.id}
+              </option>
             ))}
-          </div>
+          </select>
+
+          <h3>Choose Vendor</h3>
+          <select
+          data-testid = "vendor-selector"
+            value={selectedVendor}
+            onChange={(e) => setSelectedVendor(e.target.value)}
+            className="vendor-select"
+            disabled={!selectedEventId}
+          >
+            <option value="">Select a vendor</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.businessName || v.id}
+              </option>
+            ))}
+          </select>
 
           <h3>Template</h3>
           <select value={template} onChange={(e) => setTemplate(e.target.value)}>
@@ -434,7 +748,28 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
             ))}
           </select>
 
-          <h3>Add items</h3>
+          <h3>Upload Background Image</h3>
+          <div className="image-upload">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleImageUpload}
+            />
+            {backgroundImage && (
+              <div className="image-preview">
+                <img
+                  src={backgroundImage}
+                  alt="Background preview"
+                  style={{ maxWidth: "100%", maxHeight: "100px", marginTop: "10px" }}
+                />
+                <button onClick={clearBackgroundImage} className="clear-image">
+                  Clear Image
+                </button>
+              </div>
+            )}
+          </div>
+
+          <h3>Add Items</h3>
           <div className="tool-buttons">
             <button onClick={() => addItem("table_small")}>Add Small Round Table</button>
             <button onClick={() => addItem("table_square")}>Add Square Table</button>
@@ -472,7 +807,7 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
               </select>
             </div>
             {selectedId && (
-              <>
+              <div className="control-buttons">
                 <div className="scale-controls">
                   <button onClick={() => scaleSelected(0.9)} disabled={!selectedId}>
                     Scale Down
@@ -492,19 +827,29 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
                 <button className="danger" onClick={removeSelected} disabled={!selectedId}>
                   Remove
                 </button>
-              </>
+              </div>
             )}
           </div>
 
-          <h3>Save / upload</h3>
+          <h3>Save / Upload</h3>
           <div className="save-controls">
-            <button onClick={exportToPNG}>Download PNG</button>
-            <button onClick={uploadToVenue}>Send to Selected Vendor</button>
-            <button onClick={saveLocal}>Save Draft</button>
-            <button onClick={loadLocal}>Load Draft</button>
+            <button onClick={exportToPNG} disabled={!selectedEventId}>
+              Download PNG
+            </button>
+            <button onClick={uploadToVendor} disabled={!selectedEventId || !selectedVendor}>
+              Send to Selected Vendor
+            </button>
+            <button onClick={saveLocal} disabled={!selectedEventId}>
+              Save Draft
+            </button>
+            <button onClick={loadLocal} disabled={!selectedEventId}>
+              Load Draft
+            </button>
           </div>
 
-          <p className="hint">Tip: Click an item to select, drag to move, use scale/rotate buttons, or remove.</p>
+          <p className="hint">
+            Tip: Click an item to select, drag to move, Shift+drag to rotate, or use two-finger rotation on touchpad.
+          </p>
         </aside>
 
         <section className="floorplan-canvas-wrap">
@@ -514,8 +859,15 @@ const PlannerFloorPlan = ({ eventId, setActivePage }) => {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
-            onClick={onCanvasClick}
-            style={{ background: TEMPLATES.find((t) => t.id === template)?.color || "#fff" }}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onTouchCancel={onTouchEnd}
+            style={{
+              background: backgroundImage
+                ? `url(${backgroundImage}) no-repeat center/cover`
+                : TEMPLATES.find((t) => t.id === template)?.color || "#fff",
+            }}
           >
             {items.map((it) => (
               <div

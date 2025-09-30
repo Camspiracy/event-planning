@@ -6,15 +6,6 @@ import "./PlannerAllEvents.css"
 import { getAuth } from "firebase/auth";
 
 function EventCard({event, onSelectEvent}){
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric'
-        });
-    };
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -47,6 +38,7 @@ function EventCard({event, onSelectEvent}){
             </section>
             <section className="event-buttons">
                 <button 
+                    data-testid="select-event-button"
                     className="select-btn"
                     onClick={() => onSelectEvent(event)}
                 >
@@ -56,6 +48,27 @@ function EventCard({event, onSelectEvent}){
             </section>
         </section>
     );
+}
+
+function formatDate(date) {
+    if (!date) return "";
+
+    if(typeof date === 'object' && typeof date._seconds === 'number' && typeof date._nanoseconds === 'number') {
+        const jsDate = new Date( date._seconds * 1000 + date._nanoseconds / 1e6);
+        return jsDate.toLocaleString();
+    }
+
+    // Already a JS Date
+    if (date instanceof Date) {
+        return date.toLocaleString();
+    }
+
+    // String
+    if (typeof date === "string") {
+        return new Date(date).toLocaleString();
+    }
+
+    return String(date); // fallback
 }
 
 export default function PlannerAllEvents({setActivePage, onSelectEvent}){
@@ -115,7 +128,7 @@ export default function PlannerAllEvents({setActivePage, onSelectEvent}){
         });
 
     return(
-        <section className="events-list">
+        <section data-testid="planner-all-events" className="events-list">
 
             <section className="events-header">
                 <h2>My Events</h2>
@@ -165,7 +178,7 @@ export default function PlannerAllEvents({setActivePage, onSelectEvent}){
                     </button>
                     <button 
                         className={`status-filter-btn ${statusFilter === "in-progress" ? "active" : ""}`}
-                        onClick={() => setStatusFilter("in-progress")}
+                        onClick={() => setStatusFilter("planning")}
                     >
                         In Progress
                     </button>

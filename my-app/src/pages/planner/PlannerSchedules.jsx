@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
 import { Calendar, Clock, Upload, Plus, Download, Edit3, Trash2, Save, FileText, Database, List, X, ChevronDown, ChevronUp, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function PlannerSchedules() {
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [pdfIsSelected, setPdfIsSelected] = useState(false);
+  const [itemTime, setItemTime] = useState(getCurrentTimeString());
 
   const [newScheduleItem, setNewScheduleItem] = useState({
     time: '',
@@ -29,7 +30,6 @@ export default function PlannerSchedules() {
     duration: '',
     description: ''
   });
-
 
 
   //All functions for API calls
@@ -50,19 +50,29 @@ export default function PlannerSchedules() {
   };
 
   const fetchSchedules = async (eventId) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    const token = await user.getIdToken(true);
 
-    const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/schedules`, {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
+    try{
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const token = await user.getIdToken(true);
 
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data;
+      const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/schedules`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch Schedules");
+
+      const data = await res.json();
+      return data;
+
+    }catch(err){
+      console.error(err);
+      alert("Failed to fetch schedules");
+      return [];
+    }
+
   };
 
   const addItem = async (eventId, scheduleId, item) => {
@@ -107,58 +117,57 @@ export default function PlannerSchedules() {
     return res.json();
   }
 
-  const uploadSchedulePDF = async (eventId, file) => {
+  const uploadSchedulePDF = async (eventId, file, scheduleData) => {
 
+    console.log(scheduleData);
     const auth = getAuth();
     const user = auth.currentUser;
     const token = await user.getIdToken(true);
 
     if (!file) showNotification('error', 'No file provided');
 
-    //Ask backend for signed upload URL
-    const res1 = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/schedules/upload-url`, {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    //Upload file to firebase storage
+    const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/schedule-upload/${eventId}`, {
+      method: "POST",
+      headers: { 
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (!res.ok){
+      showNotification("error", "Failed to upload PDF");
+      return;
+    } 
+    showNotification("success", "Uploaded pdf");
+    const data = await res.json();
+    console.log(data.files);
+
+    scheduleData = {
+      ...scheduleData,
+      permanentUrl: data.files[0].url
+    }
+        console.log(scheduleData);
+
+    //Save file link
+    const res2 = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/schedule-save/${eventId}`, {
       method: "POST",
       headers: { 
         "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json" 
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        fileName: file.name,
-        contentType: file.type,
-      }),
+      body: JSON.stringify(scheduleData)
     });
 
-    if (!res1.ok) showNotification("error", "Failed to get upload URL");
-    const { uploadUrl, filePath } = await res1.json();
+    if(!res2.ok){
+      showNotification("error", "Failed to save schedule link");
+      return;
+    } 
+    showNotification("success", "Saved schedule link");
 
-    console.log("UploadURL: ", uploadUrl);
-    //Upload file directly to signed URL
-    const res2 = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-
-    if (!res2.ok) showNotification("error", "Failed to upload file to storage");
-
-    //Tell backend to save metadata + generate permanent link
-    const res3 = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/schedules/save-file`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filePath,
-        title: file.name,
-      }),
-    });
-
-    if (!res3.ok) showNotification("error", "Failed to save file metadata");
-    const { url, scheduleId } = await res3.json();
-
-    console.log("PDF uploaded successfully");
-    console.log("Permanent URL:", url);
-    console.log("Firestore doc ID:", scheduleId);
-
-    return { url, scheduleId };
 }
  
 
@@ -327,15 +336,13 @@ export default function PlannerSchedules() {
 
   const handleFileUpload = async (event) => {
     const file = selectedPdf;
-    console.log(file);
 
     if (file && file.type === 'application/pdf') {
       if (!newScheduleTitle.trim()) {
         showNotification('error', 'Please enter a schedule title first');
         return;
       }
-      
-      const result = await uploadSchedulePDF(selectedEvent.id, file);
+      const result = await uploadSchedulePDF(selectedEvent.id, file, {title: selectedPdf.name});
       if (result) {
         // Refresh schedules
         const fetchedSchedules = await fetchSchedules(selectedEvent.id);
@@ -364,6 +371,7 @@ export default function PlannerSchedules() {
     if (!newScheduleItem.time || !newScheduleItem.title) return;
 
     const eventId = selectedEventForSchedule?.id || selectedEvent?.id;
+    if(!validateTime(newScheduleItem.time, selectedEvent)) return;
     const result = await addItem(eventId, selectedSchedule, newScheduleItem);
     
     if (result) {
@@ -382,6 +390,16 @@ export default function PlannerSchedules() {
   };
 
   const updateScheduleItem = (scheduleIndex, itemId, field, value) => {
+    const schedule = schedules[scheduleIndex];
+    if (!schedule) return;
+
+    const item = schedule.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    // Only validate if the field being updated is the time
+    if (field === "time" && !validateTime(value, selectedEvent)) {
+      return; // invalid time, do not update
+    }
 
     setSchedules(prev => ({
       ...prev,
@@ -556,6 +574,41 @@ export default function PlannerSchedules() {
       showNotification('success', 'Schedule deleted');
   }
 
+// event.startTime: JS Date of event start
+// event.durationHours: number of hours
+// selectedTime: string from input type="time", e.g., "14:30"
+
+function validateTime(selectedTime, event) {
+  if (!selectedTime) return false;
+
+  // convert "HH:MM" to minutes since midnight
+  const [hours, minutes] = selectedTime.split(":").map(Number);
+  const selectedMinutes = hours * 60 + minutes;
+
+  const startHours = new Date(formatDate(event.date)).getHours();
+  const startMinutes = new Date(formatDate(event.date)).getMinutes();
+  const eventStartMinutes = startHours * 60 + startMinutes;
+
+  const eventEndMinutes = eventStartMinutes + event.duration * 60;
+
+  if (selectedMinutes < eventStartMinutes) {
+    alert("Selected time cannot be before the event start time!");
+    return false;
+  }
+  if (selectedMinutes > eventEndMinutes) {
+    alert("Selected time cannot be after the event end time!");
+    return false;
+  }
+
+  return true; // valid
+}
+
+function getCurrentTimeString() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
 
   function formatDate(date) {
     if (!date) return "";
@@ -616,6 +669,7 @@ export default function PlannerSchedules() {
                 <section className="ps-events-list">
                   {events.map(event => (
                     <section
+                      data-testid="event-card"
                       key={event.id}
                       onClick={() => handleEventSelect(event)}
                       className={`ps-event-card ${selectedEvent?.id === event.id ? 'ps-event-selected' : ''}`}
@@ -669,7 +723,7 @@ export default function PlannerSchedules() {
                     </section>
                   ) : (
                     (schedules[selectedEvent.id] || []).map((schedule, scheduleIndex) => (
-                      <section key={schedule.id} className="ps-schedule">
+                      <section data-testid="schedule-container" key={schedule.id} className="ps-schedule">
                         <section 
                           className="ps-schedule-header"
                           onClick={() => toggleSchedule(selectedEvent.id, scheduleIndex)}
@@ -765,7 +819,7 @@ export default function PlannerSchedules() {
                                             <section className="ps-form-row">
                                               <input
                                                 type="time"
-                                                defaultValue={item.time}
+                                                defaultValue={itemTime}
                                                 onChange={(e) => updateScheduleItem(scheduleIndex, item.id, 'time', e.target.value)}
                                                 className="ps-input"
                                               />
@@ -822,7 +876,7 @@ export default function PlannerSchedules() {
                                               {item.description && <p>{item.description}</p>}
                                             </section>
                                             <section className="ps-item-actions">
-                                              <button
+                                              <button data-testid="item-edit-button"
                                                 onClick={() => setEditingItem(item.id)}
                                                 className="ps-btn-icon"
                                               >
@@ -956,8 +1010,9 @@ export default function PlannerSchedules() {
             <section className="ps-modal-content">
               <section className="ps-form-row">
                 <section className="ps-form-group">
-                  <label>Time</label>
+                  <label htmlFor="time">Time</label>
                   <input
+                    id="time"
                     type="time"
                     value={newScheduleItem.time}
                     onChange={(e) => setNewScheduleItem(prev => ({ ...prev, time: e.target.value }))}
@@ -965,8 +1020,9 @@ export default function PlannerSchedules() {
                   />
                 </section>
                 <section className="ps-form-group">
-                  <label>Duration (minutes)</label>
+                  <label htmlFor="duration">Duration (minutes)</label>
                   <input
+                    id="duration"
                     type="number"
                     value={newScheduleItem.duration}
                     onChange={(e) => setNewScheduleItem(prev => ({ ...prev, duration: e.target.value }))}
@@ -976,8 +1032,9 @@ export default function PlannerSchedules() {
                 </section>
               </section>
               <section className="ps-form-group">
-                <label>Title</label>
+                <label htmlFor="title">Title</label>
                 <input
+                  id="title"
                   type="text"
                   value={newScheduleItem.title}
                   onChange={(e) => setNewScheduleItem(prev => ({ ...prev, title: e.target.value }))}

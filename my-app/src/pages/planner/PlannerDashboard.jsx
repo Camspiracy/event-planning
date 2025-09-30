@@ -48,7 +48,7 @@ function PlannerDashboard({ onSelectEvent }) {
     return(
         <section className="event-card">
             <section className="event-header">
-                <h3>{event.name}</h3>
+                <h3 data-testid="event">{event.name}</h3>
                 <section 
                     className="event-status" 
                     style={{backgroundColor: getStatusColor(event.status)}}
@@ -162,7 +162,7 @@ function PlannerDashboard({ onSelectEvent }) {
   const percentageNewGuests = totalPastGuests === 0 ? 0 : Math.round((guestDiff / totalPastGuests) * 100);
 
   return (
-    <section className='page-container'>
+    <section data-testid="planner-dashboard "className='page-container'>
 
       {/* Header Section */}
       <section className="dashboard-intro">
@@ -191,7 +191,7 @@ function PlannerDashboard({ onSelectEvent }) {
           </section>
           <section className="summary-card-body">
             <h3 className="summary-label">Upcoming Events</h3>
-            <p className="summary-value"> {Upcoming.length}</p>
+            <p data-testid="upcoming-events" className="summary-value"> {Upcoming.length}</p>
             <p className="summary-subtext">Next 30 days</p>
           </section>
         </section>
@@ -204,7 +204,7 @@ function PlannerDashboard({ onSelectEvent }) {
           </section>
           <section className="summary-card-body">
             <h3 className="summary-label">Avg Attendance</h3>
-            <p className="summary-value">{aveGuestCount}</p>
+            <p data-testid="avg-attendance"className="summary-value">{aveGuestCount}</p>
             <p className="summary-subtext">Per Event</p>
           </section>
         </section>
@@ -243,7 +243,7 @@ function PlannerDashboard({ onSelectEvent }) {
           <section className="dashboard-card">
             <section className="card-header">
               <h3>Upcoming Events</h3>
-              <button 
+              <button data-testid="view-all"
                 className="view-all-link" 
                 onClick={() => navigate("/planner/events")}
               >

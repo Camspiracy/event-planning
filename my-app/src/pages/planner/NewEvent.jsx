@@ -13,8 +13,21 @@ export default function NewEvent({ setActivePage }) {
     style: ""
   });
 
+  //To prevent previous date selection *******************
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0"); // months are 0-indexed
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+  //End of preventing previous date selection
+
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = getAuth();
 
@@ -65,6 +78,9 @@ export default function NewEvent({ setActivePage }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if(loading) return;
+    setLoading(true);
     setError("");
     setSuccess("");
 
@@ -107,6 +123,9 @@ export default function NewEvent({ setActivePage }) {
     } catch (err) {
       console.error(err);
       setError(err.message);
+    }
+    finally{
+      setLoading(false);
     }
   };
 
@@ -160,7 +179,8 @@ export default function NewEvent({ setActivePage }) {
           <section className="form-group">
             <label htmlFor="startTime">Date & Time *</label>
             <input 
-              type="datetime-local" 
+              type="datetime-local"
+              min={minDateTime} 
               id="startTime"
               name="startTime" 
               value={inputs.startTime} 
@@ -214,7 +234,7 @@ export default function NewEvent({ setActivePage }) {
           </select>
         </section>
 
-        <button type="submit" className="create-event-btn" onClick={handleSubmit}>
+        <button type="submit" className="create-event-btn" onClick={handleSubmit} disabled={loading}>
           Create Event
         </button>
       </form>

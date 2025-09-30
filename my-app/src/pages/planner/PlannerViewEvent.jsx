@@ -189,7 +189,7 @@ function AddGuestPopup({ isOpen, onClose, onSave }) {
 //Code for Guest RSVP Summary Bar **********
 function GuestRSVPSummary({guests}) {
     const totalGuests = guests.length;
-    const confirmedGuests = guests.filter(g => g.rsvpStatus === 'accept').length;
+    const confirmedGuests = guests.filter(g => g.rsvpStatus === 'accepted').length;
     const pendingGuests = guests.filter(g => g.rsvpStatus === 'pending').length;
     const declinedGuests = guests.filter(g => g.rsvpStatus === 'declined').length;
 
@@ -198,15 +198,15 @@ function GuestRSVPSummary({guests}) {
             <h4>RSVP Status</h4>
             <section className="rsvp-stats">
                 <section className="rsvp-stat confirmed">
-                    <span className="rsvp-number">{confirmedGuests}</span>
+                    <span data-testid="confirmed-count" className="rsvp-number">{confirmedGuests}</span>
                     <span className="rsvp-label">Confirmed</span>
                 </section>
                 <section className="rsvp-stat pending">
-                    <span className="rsvp-number">{pendingGuests}</span>
+                    <span data-testid="pending-count" className="rsvp-number">{pendingGuests}</span>
                     <span className="rsvp-label">Pending</span>
                 </section>
                 <section className="rsvp-stat declined">
-                    <span className="rsvp-number">{declinedGuests}</span>
+                    <span data-testid="declined-count" className="rsvp-number">{declinedGuests}</span>
                     <span className="rsvp-label">Declined</span>
                 </section>
             </section>
@@ -476,20 +476,29 @@ export default function PlannerViewEvent({event, setActivePage}) {
 
     const fetchGuests = async () => {
     
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const token = await user.getIdToken(true);
-    
-        const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/guests`, {
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        });
-        if (!res.ok) return []; 
-    
-        const data = await res.json();
-        return data.guests || [];
+        try{
+            const auth = getAuth();
+            const user = auth.currentUser;
+            const token = await user.getIdToken(true);
+        
+            const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${eventId}/guests`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!res.ok) throw new Error("Failed to fetch guests");
+        
+            const data = await res.json();
+            return data.guests;
+
+        } catch(err) {
+            console.error(err);
+            alert("Unable to fetch guests");
+            return [];
+        }
+
     };
 
     const fetchVendors = async () => {
@@ -603,15 +612,15 @@ export default function PlannerViewEvent({event, setActivePage}) {
         }
     }, [showAddGuestPopup]);
 
-    const handleSave = () => {
-        setEventData({...editForm});
-        setIsEditing(false);
-    };
-
     useEffect(() => {
         console.log("eventData updated:", eventData);
         updateEventData();
     }, [eventData]);
+
+    const handleSave = () => {
+        setEventData({...editForm});
+        setIsEditing(false);
+    };
 
     const handleCancel = () => {
         setEditForm({...eventData});
@@ -681,7 +690,8 @@ export default function PlannerViewEvent({event, setActivePage}) {
     return(
         <section className="event-view-edit">
             {showChat && (
-                <ChatComponent plannerId={event.plannerId} vendorId={chatService.vendorId} eventId = {event.id} closeChat={onCloseChat}
+                <ChatComponent
+                plannerId={event.plannerId} vendorId={chatService.vendorId} eventId = {event.id} closeChat={onCloseChat}
                 currentUser={{id:event.plannerId, name: event.name, type: "planner"}}
                 otherUser={{id: chatService.vendorId, name: chatService.vendorName, type: "vendor"}} serviceType={chatService.serviceName}/>
             )}

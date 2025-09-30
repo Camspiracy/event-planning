@@ -7,5 +7,12 @@
     "papaparse": "^5.5.3",
     "recharts": "^3.1.2",
     "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "jsdom": "^27.0.0",
+    "vitest": "^3.2.4"
   }
 }

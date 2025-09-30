@@ -96,7 +96,7 @@ function AdminVendorManagement() {
 		);
 
 	return (
-		<sections className="main-container vendor-management-page">
+		<section className="main-container vendor-management-page">
 			<AdminVendorApplications />
 			<section className="filters-section">
 				<h2>All approved vendors</h2>
@@ -205,7 +205,7 @@ function AdminVendorManagement() {
 					</div>
 				)}
 			</Popup>
-		</sections>
+		</section>
 	);
 }
 

@@ -70,7 +70,7 @@ const PlannerApp = () => {
 	const renderCurrentPage = () => {
 		switch (activePage) {
 			case "dashboard":
-				return <PlannerDashboard setActivePage={setActivePage} />;
+				return <PlannerDashboard data-testid="planner-dashboard" setActivePage={setActivePage} />;
 			case "events":
 				return (
 					<PlannerAllEvents
