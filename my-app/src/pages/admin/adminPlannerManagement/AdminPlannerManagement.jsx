@@ -26,7 +26,14 @@ export default function PlannerManagement() {
 
 	// Fetch all planners on component mount
 	useEffect(() => {
+		
+		
 		const fetchPlanners = async () => {
+			let user = auth.currentUser;
+		while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
 			try {
 				const token = await getToken();
 				const apiUrl =

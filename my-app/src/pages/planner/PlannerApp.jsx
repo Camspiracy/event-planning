@@ -24,9 +24,17 @@ import PlannerFloorPlan from "./PlannerFloorPlan";
 import PlannerSchedules from "./PlannerSchedules";
 
 const PlannerApp = () => {
-	//USing to page to the selected tab
-	const [activePage, setActivePage] = useState("dashboard");
+	
 	const [selectedEvent, setSelectedEvent] = useState(null);
+	const [activePage, setActivePage] = useState(
+  localStorage.getItem("activePage") || "dashboard"
+);
+
+	const handleSetActivePage = (page) => {
+  setActivePage(page);
+  localStorage.setItem("activePage", page);
+};
+
 
 	const navigate = useNavigate();
 
@@ -58,7 +66,7 @@ const PlannerApp = () => {
 					built here.
 				</p>
 				<button
-					onClick={() => setActivePage("dashboard")}
+					onClick={() => handleSetActivePage("dashboard")}
 					className="back-to-dashboard-btn"
 				>
 					Back to Dashboard
@@ -106,11 +114,13 @@ const PlannerApp = () => {
 
 	const onSelectEvent = (event) => {
 		setSelectedEvent(event);
-		setActivePage("selected-event");
+		handleSetActivePage("selected-event");
+		localStorage.setItem("selectedEvent", JSON.stringify(event));
+		
 	};
 
 	const onOpenMarketplace = () => {
-		setActivePage("vendor-marketplace");
+		handleSetActivePage("vendor-marketplace");
 	};
 
 	return (
@@ -147,7 +157,7 @@ const PlannerApp = () => {
 												? "active"
 												: ""
 										}`}
-										onClick={() => setActivePage(item.id)}
+										onClick={() => handleSetActivePage(item.id)}
 									>
 										<Icon size={18} />
 										{item.label}

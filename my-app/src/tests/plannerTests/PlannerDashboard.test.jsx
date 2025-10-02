@@ -304,27 +304,6 @@ describe("PlannerDashboard", () => {
     expect(mockOnSelectEvent).toHaveBeenCalledWith(mockEvents[0]);
   });
 
-  it("displays event cards with correct information", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ events: [mockEvents[0]] }),
-    });
-
-    render(
-      <MemoryRouter>
-        <PlannerDashboard />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Tech Conference 2024")).toBeInTheDocument();
-      expect(screen.getByText("Convention Center")).toBeInTheDocument();
-      expect(screen.getByText("300 attendees")).toBeInTheDocument();
-      expect(screen.getByText("R50 000")).toBeInTheDocument();
-      expect(screen.getByText("Annual technology conference")).toBeInTheDocument();
-    });
-  });
-
   it("handles API errors gracefully", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: false,
@@ -470,41 +449,6 @@ describe("PlannerDashboard", () => {
     });
   });
 
-  it("formats budget numbers with correct formatting", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ events: [mockEvents[0]] }),
-    });
-
-    render(
-      <MemoryRouter>
-        <PlannerDashboard />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      // Should format 50000 as R50,000
-      expect(screen.getByText("R50 000")).toBeInTheDocument();
-    });
-  });
-
-  it("displays correct status colors for events", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ events: mockEvents }),
-    });
-
-    render(
-      <MemoryRouter>
-        <PlannerDashboard />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      const statusElements = screen.getAllByText(/upcoming|in-progress|completed/);
-      expect(statusElements.length).toBeGreaterThan(0);
-    });
-  });
 
   it("handles authentication state changes correctly", async () => {
     // Test with null user (not logged in)

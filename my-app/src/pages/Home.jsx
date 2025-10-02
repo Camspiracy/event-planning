@@ -6,6 +6,8 @@ import { getAuth } from "firebase/auth";
 import "./Home.css";
 
 export default function Home() {
+	localStorage.clear();
+
 	const navigate = useNavigate();
 	const auth = getAuth();
 

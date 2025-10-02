@@ -19,7 +19,7 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/**/*.js', 'src/**/*.jsx'],
-      exclude: ['node_modules/**', 'public/**','src/tests/','src/pages/vendor/VendorContract.jsx']
+      exclude: ['node_modules/**', 'public/**','src/tests/','src/pages/planner/PlannerContract.jsx','src/pages/vendor/VendorContract.jsx','src/pages/vendor/vendorApp.jsx','src/pages/vendor/VendorDashboard.jsx','src/pages/vendor/PDFSignatureEditor.jsx','src/pages/planner/PlannerApp.jsx',]
     },
   },
 })

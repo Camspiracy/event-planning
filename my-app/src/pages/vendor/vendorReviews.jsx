@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { auth } from "../../firebase";
 import { Star, StarHalf } from "lucide-react";
 import "./vendorReviews.css";
+import { getAuth } from "firebase/auth";
 
 const StarRating = ({ rating, size = 16 }) => (
   <div className="star-rating">
@@ -101,7 +102,15 @@ const VendorReviews = () => {
       
       setLoading(true);
       try {
-        const token = await auth.currentUser.getIdToken();
+
+        const auth = getAuth();
+      let user = auth.currentUser;
+      while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
+      const token = await user.getIdToken();
+
 
         const res = await fetch(
           `https://us-central1-planit-sdp.cloudfunctions.net/api/analytics/${vendorId}`,

@@ -52,8 +52,13 @@ const VendorContract = ({ setActivePage }) => {
     if (!auth.currentUser) return [];
     setLoadingServices(true);
     try {
-      const token = await auth.currentUser.getIdToken();
-      // Placeholder URL - replace with actual API endpoint
+      const auth = getAuth();
+      let user = auth.currentUser;
+      while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
+      const token = await user.getIdToken();
       const url = `https://us-central1-planit-sdp.cloudfunctions.net/api/${vendorId}/${eventId}/services-for-contract`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },

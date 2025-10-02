@@ -72,6 +72,7 @@ function formatDate(date) {
 }
 
 export default function PlannerAllEvents({setActivePage, onSelectEvent}){
+    
 
     const plannerId = "";
     const [search, setSearch] = useState("");
@@ -84,7 +85,13 @@ export default function PlannerAllEvents({setActivePage, onSelectEvent}){
     const fetchPlannerEvents = async () => {
 
         const auth = getAuth();
-        const user = auth.currentUser;
+        let user = auth.currentUser;
+        
+    
+        while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	    user = auth.currentUser;
+    	}
         const token = await user.getIdToken(true);
 
         const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/me/events`, {
@@ -100,6 +107,7 @@ export default function PlannerAllEvents({setActivePage, onSelectEvent}){
 
     useEffect(() => {
         async function loadEvents() {
+          
             const events = await fetchPlannerEvents(plannerId);
             setEvents(events);
         }

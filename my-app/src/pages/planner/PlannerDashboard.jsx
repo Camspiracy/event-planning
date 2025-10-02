@@ -82,6 +82,10 @@ function PlannerDashboard({ onSelectEvent }) {
       console.warn("User not logged in");
       return [];
     }
+		while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
     const token = await user.getIdToken(true);
     const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/me/events`, {
       headers: {

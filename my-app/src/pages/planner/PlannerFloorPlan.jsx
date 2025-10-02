@@ -61,7 +61,13 @@ const PlannerFloorPlan = ({ eventId: initialEventId, setActivePage }) => {
 
   // Fetch planner's events
   useEffect(() => {
+    
     const fetchEvents = async () => {
+      let user = auth.currentUser;
+    while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
       try {
         const auth = getAuth();
         const user = auth.currentUser;

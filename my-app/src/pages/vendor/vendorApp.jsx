@@ -21,8 +21,16 @@ import VendorFloorplan from "./vendorFloorplan";
 
 
 const VendorApp = () => {
-  const [activePage, setActivePage] = useState("dashboard");
+
  const navigate = useNavigate();
+ const [activePage, setActivePage] = useState(
+   localStorage.getItem("activePage") || "home");
+   const handleSetActivePage = (page) => {
+   setActivePage(page);
+   
+   localStorage.setItem("activePage", page);
+ };
+
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: Activity },
     { id: "profile", label: "Profile", icon: Users },
@@ -45,7 +53,7 @@ const VendorApp = () => {
         <h1 className="placeholder-title">{pageTitle}</h1>
         <p className="placeholder-text">This page is coming soon. All the functionality will be built here.</p>
         <button 
-          onClick={() => setActivePage("dashboard")}
+          onClick={() => handleSetActivePage("dashboard")}
           className="back-to-dashboard-btn"    
 
 
@@ -100,7 +108,7 @@ const VendorApp = () => {
                   <button
                     key={item.id}
                     className={`nav-btn ${activePage === item.id ? "active" : ""}`}
-                    onClick={() => setActivePage(item.id)}
+                    onClick={() => handleSetActivePage(item.id)}
                   >
                     <Icon size={18} />
                     {item.label}

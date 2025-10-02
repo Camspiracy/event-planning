@@ -248,7 +248,11 @@ export default function PlannerVendorMarketplace({ event = null, plannerId}) {
     //All calls to api here
     const fetchAllEventsVendors = async () => {
         const auth = getAuth();
-        const user = auth.currentUser;
+        let user = auth.currentUser;
+        while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
         const token = await user.getIdToken(true);
 
         const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/${plannerId}/bestVendors`, {

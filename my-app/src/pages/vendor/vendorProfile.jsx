@@ -80,7 +80,13 @@ const VendorProfile = () => {
       return;
     }
     try {
-      const token = await auth.currentUser.getIdToken();
+      const auth = getAuth();
+      let user = auth.currentUser;
+      while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
+      const token = await user.getIdToken();
       const res = await fetch("https://us-central1-planit-sdp.cloudfunctions.net/api/vendor/me", {
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -452,6 +452,7 @@ function GuestImportWithValidation({ eventId, onImportComplete, onClose }) {
 
 export default function PlannerViewEvent({event, setActivePage}) {
     
+    
     if(!event) {
         return <section>Loading Event...</section>;
     }
@@ -491,7 +492,7 @@ export default function PlannerViewEvent({event, setActivePage}) {
             if (!res.ok) throw new Error("Failed to fetch guests");
         
             const data = await res.json();
-            return data.guests;
+            return data.guests || [];
 
         } catch(err) {
             console.error(err);

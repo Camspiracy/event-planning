@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { auth } from "../../firebase";
 import "./vendorBooking.css";
+import { getAuth } from "firebase/auth";
 import ChatComponent from "../planner/ChatComponent.jsx";
 
 // ---------- Format Date ----------
@@ -58,19 +59,26 @@ const VendorBooking = ({ setActivePage }) => {
   const [chatEventName, setChatEventName] = useState(null);
   const [chatVendorName, setChatVendorName] = useState(null);
 
-  const vendorId = auth.currentUser?.uid;
+  let vendorId = auth.currentUser?.uid;
 
   // -------- Fetch Bookings --------
   useEffect(() => {
     const fetchBookings = async () => {
-      if (!auth.currentUser) {
+      const auth = getAuth();
+            let user = auth.currentUser;
+            while (!user) {
+                await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+              user = auth.currentUser;
+            }
+             vendorId = user.uid;
+      if (!user) {
         setError("User not authenticated");
         setLoading(false);
         return;
       }
 
       try {
-        const token = await auth.currentUser.getIdToken();
+              const token = await user.getIdToken();
         const res = await fetch(
           "https://us-central1-planit-sdp.cloudfunctions.net/api/vendor/bookings/services",
           {
@@ -128,7 +136,13 @@ const VendorBooking = ({ setActivePage }) => {
     setIsUpdating(`${eventId}-${vendorId}`);
 
     try {
-      const token = await auth.currentUser.getIdToken();
+      const auth = getAuth();
+            let user = auth.currentUser;
+            while (!user) {
+                await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+              user = auth.currentUser;
+            }
+            const token = await user.getIdToken();
       const res = await fetch(
         `https://us-central1-planit-sdp.cloudfunctions.net/api/event/${eventId}/vendor/${vendorId}/status`,
         {

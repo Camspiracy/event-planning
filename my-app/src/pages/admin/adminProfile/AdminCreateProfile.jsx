@@ -19,6 +19,7 @@ export default function AdminCreateProfile() {
 	useEffect(() => {
 		if (auth.currentUser) {
 			setEmail(auth.currentUser.email);
+			
 		}
 	}, []);
 
@@ -29,6 +30,8 @@ export default function AdminCreateProfile() {
 
 		if (!auth.currentUser) {
 			setError("You must be logged in to create a profile");
+			
+			
 			return;
 		}
 

@@ -35,7 +35,11 @@ export default function PlannerSchedules() {
   //All functions for API calls
   const fetchEvents = async () => {
     const auth = getAuth();
-    const user = auth.currentUser;
+    let user = auth.currentUser;
+    while (!user) {
+      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+      	user = auth.currentUser;
+    	}
     const token = await user.getIdToken(true);
 
     const res = await fetch(`https://us-central1-planit-sdp.cloudfunctions.net/api/planner/me/events`, {

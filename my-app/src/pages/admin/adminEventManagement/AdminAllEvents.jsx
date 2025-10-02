@@ -78,7 +78,12 @@ export default function AdminAllEvents({ setActivePage, setSelectedEvent }) {
 
 	const fetchAdminEvents = async () => {
 		const auth = getAuth();
-		const user = auth.currentUser;
+		let user = auth.currentUser;
+	
+				while (!user) {
+					await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+				user = auth.currentUser;
+				}
 		if (!user) {
 			console.warn("No user signed in");
 			return [];

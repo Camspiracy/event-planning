@@ -19,8 +19,17 @@ import AdminPlannerManagement from "./adminPlannerManagement/AdminPlannerManagem
 import AdminViewEvent from "./adminEventManagement/AdminViewEvent.jsx";
 
 const Admin = () => {
-  const [activePage, setActivePage] = useState("home");
+  
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [activePage, setActivePage] = useState(
+  localStorage.getItem("activePage") || "home");
+  const handleSetActivePage = (page) => {
+  setActivePage(page);
+  
+  localStorage.setItem("activePage", page);
+};
+
+
 
   const navigate = useNavigate();
 
@@ -47,7 +56,7 @@ const Admin = () => {
           This page is coming soon. All the functionality will be built here.
         </p>
         <button
-          onClick={() => setActivePage("home")}
+          onClick={() => handleSetActivePage("home")}
           className="back-to-home-btn"
         >
           Back to Dashboard
@@ -116,7 +125,7 @@ const Admin = () => {
                     className={`nav-btn ${
                       activePage === item.id ? "active" : ""
                     }`}
-                    onClick={() => setActivePage(item.id)}
+                    onClick={() => handleSetActivePage(item.id)}
                   >
                     <Icon size={18} />
                     {item.label}
