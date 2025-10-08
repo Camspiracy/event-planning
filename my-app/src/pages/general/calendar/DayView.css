@@ -1,0 +1,97 @@
+/* components/Calendar/DayView.css */
+
+.day {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.day__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.day__title {
+  margin: 6px 0;
+}
+
+.day__today-badge {
+  background: #e3f2fd;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: inline-block;
+}
+
+.day__body {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.day__timecol {
+  width: 70px;
+  padding-right: 6px;
+  box-sizing: border-box;
+  background: #fafafa;
+  border-right: 1px solid #eee;
+  overflow: auto;
+}
+
+.day__timecol--today {
+  background: #f7fbff;
+}
+
+.day__hours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.day__hour {
+  padding-right: 6px;
+  text-align: right;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.day__col {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.day__col--today {
+  background: #f7fbff;
+}
+
+.day__grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.day__grid-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.day__grid-row {
+  border-top: 1px solid #f4f4f4;
+  box-sizing: border-box;
+}
+
+.day__events-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}

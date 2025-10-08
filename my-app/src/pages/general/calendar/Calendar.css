@@ -1,0 +1,74 @@
+/* components/Calendar/Calendar.css */
+
+.cal__container {
+  width: 90vw;
+  margin: auto;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.cal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cal__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cal__nav-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cal__nav-btn {
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cal__today-btn {
+  background: #e3f2fd;
+  border-color: #cde7ff;
+}
+
+.cal__title {
+  margin: 0 8px;
+  font-size: 1rem;
+}
+
+.cal__view-switch {
+  display: flex;
+  gap: 8px;
+}
+
+.cal__view-btn {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cal__view-btn.is-active {
+  background: #f6f9ff;
+  border-color: #cde7ff;
+}
+
+.cal__body {
+  flex-grow: 1;
+  min-height: 0;
+}

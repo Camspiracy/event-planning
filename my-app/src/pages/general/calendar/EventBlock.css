@@ -1,0 +1,30 @@
+/* components/Calendar/EventBlock.css */
+
+.event-block {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  background: #e3f2fd;
+  border: 1px solid #cde7ff;
+  border-radius: 6px;
+  padding: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.event-block__header {
+  margin: 0 0 4px 0;
+}
+
+.event-block__title {
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+
+.event-block__time {
+  font-size: 12px;
+  opacity: 0.9;
+  margin: 0;
+}

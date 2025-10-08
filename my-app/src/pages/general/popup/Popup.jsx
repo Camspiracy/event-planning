@@ -6,13 +6,15 @@ function Popup({ isOpen, onClose, children }) {
 
 	return (
 		<div className="popup-overlay" role="presentation" onClick={onClose}>
-  
-			<div className="popup-content" onClick={(e) => e.stopPropagation()}>
+			<section
+				className="popup-content"
+				onClick={(e) => e.stopPropagation()}
+			>
 				<button className="popup-close-button" onClick={onClose}>
 					Close
 				</button>
 				{children}
-			</div>
+			</section>
 		</div>
 	);
 }

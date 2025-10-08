@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../../firebase"; // Ensure this path is correct
 import { Search, Edit } from "lucide-react";
-import Popup from "../adminGeneralComponents/Popup.jsx"; // Assuming you have a Modal.jsx component
+import Popup from "../../general/popup/Popup.jsx";
 import "./AdminVendorManagement.css";
 import AdminVendorApplications from "./AdminVendorApplications.jsx";
 
@@ -24,16 +24,13 @@ function AdminVendorManagement() {
 			? auth.currentUser.getIdToken()
 			: Promise.reject("Not logged in");
 
-	
-
-			
 	useEffect(() => {
 		const fetchVendors = async () => {
-		let user = auth.currentUser;
-		while (!user) {
-			await new Promise((res) => setTimeout(res, 50)); // wait 50ms
-		user = auth.currentUser;
-		}
+			let user = auth.currentUser;
+			while (!user) {
+				await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+				user = auth.currentUser;
+			}
 			try {
 				const token = await getToken();
 				const apiUrl =

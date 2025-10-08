@@ -18,6 +18,7 @@ import "./vendorApp.css";
 import VendorReviews from "./vendorReviews";
 import VendorContract from "./VendorContract";
 import VendorFloorplan from "./vendorFloorplan";
+import SetupElectronicSignature from "./SetupElectronicSignature";
 
 
 const VendorApp = () => {
@@ -78,6 +79,8 @@ const VendorApp = () => {
         return <VendorReviews setActivePage={setActivePage}/>;
       case "contracts":
         return <VendorContract setActivePage={setActivePage} />;
+      case "setup-signature":   
+        return <SetupElectronicSignature setActivePage={setActivePage} />;  
       default:
         return <VendorDashboard setActivePage={setActivePage} />;
     }

@@ -562,8 +562,9 @@
     padding: 1.5rem 2rem;
     border-bottom: 1px solid #e5e7eb;
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     background: #f9fafb;
 }
 

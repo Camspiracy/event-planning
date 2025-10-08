@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../../firebase"; // Ensure this path is correct
 import { Search, Edit, UserX, UserCheck, Trash2 } from "lucide-react";
-import Popup from "../adminGeneralComponents/Popup.jsx";
+import Popup from "../../general/popup/Popup.jsx";
 
 import "./AdminPlannerManagement.css";
 
@@ -26,14 +26,12 @@ export default function PlannerManagement() {
 
 	// Fetch all planners on component mount
 	useEffect(() => {
-		
-		
 		const fetchPlanners = async () => {
 			let user = auth.currentUser;
-		while (!user) {
-      		await new Promise((res) => setTimeout(res, 50)); // wait 50ms
-      	user = auth.currentUser;
-    	}
+			while (!user) {
+				await new Promise((res) => setTimeout(res, 50)); // wait 50ms
+				user = auth.currentUser;
+			}
 			try {
 				const token = await getToken();
 				const apiUrl =

@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import "./AdminReports.css";
 import { auth } from "../../../firebase";
-import Popup from "../adminGeneralComponents/Popup.jsx";
+import Popup from "../../general/popup/Popup.jsx";
 
 const KpiCard = ({ value, label, icon: Icon }) => (
 	<div className="kpi-metric">

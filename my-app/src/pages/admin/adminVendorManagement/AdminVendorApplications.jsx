@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { auth } from "../../../firebase"; 
-import Popup from "../adminGeneralComponents/Popup";
+import { auth } from "../../../firebase";
+import Popup from "../../general/popup/Popup.jsx";
 import "./AdminVendorApplications.css";
 
 function AdminVendorApplications() {
 	const [applications, setApplications] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
-
-	
 
 	const [isPopupOpen, setIsPopupOpen] = useState(false);
 	const [selectedVendor, setSelectedVendor] = useState(null);
@@ -38,7 +36,6 @@ function AdminVendorApplications() {
 		fetchApplications();
 	}, []);
 
-	
 	const handleUpdateStatus = async (vendorId, status) => {
 		try {
 			const apiUrl = `https://us-central1-planit-sdp.cloudfunctions.net/api/admin/vendor-applications/${vendorId}`;
@@ -55,7 +52,6 @@ function AdminVendorApplications() {
 				throw new Error(`Failed to ${status} vendor`);
 			}
 
-			
 			setApplications((prev) =>
 				prev.filter((app) => app.id !== vendorId)
 			);

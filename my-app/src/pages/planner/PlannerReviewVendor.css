@@ -1,0 +1,266 @@
+/* Review Vendor Modal Styles */
+.review-vendor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.review-vendor-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.review-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.review-modal-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.review-close-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.review-close-btn:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.review-modal-body {
+  padding: 24px;
+}
+
+.vendor-review-info {
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
+.vendor-review-info h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.vendor-review-info .service-name {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rating-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rating-section label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.star-rating {
+  display: flex;
+  gap: 8px;
+}
+
+.star {
+  background: none;
+  border: none;
+  font-size: 40px;
+  color: #d1d5db;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.star:hover,
+.star.filled {
+  color: #fbbf24;
+  transform: scale(1.1);
+}
+
+.rating-text {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  min-height: 20px;
+}
+
+.review-text-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-text-section label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.review-text-section textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.review-text-section textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.char-count {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: right;
+  margin: 0;
+}
+
+.review-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin: 0;
+}
+
+.review-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.cancel-review-btn,
+.submit-review-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.cancel-review-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.cancel-review-btn:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+.submit-review-btn {
+  background-color: #2563eb;
+  color: white;
+}
+
+.submit-review-btn:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.submit-review-btn:disabled,
+.cancel-review-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .review-vendor-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .review-modal-header,
+  .review-modal-body {
+    padding: 16px;
+  }
+
+  .review-modal-header h2 {
+    font-size: 20px;
+  }
+
+  .star {
+    font-size: 32px;
+  }
+
+  .review-actions {
+    flex-direction: column;
+  }
+
+  .cancel-review-btn,
+  .submit-review-btn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,98 @@
+/* components/Calendar/WeekView.css */
+
+.week {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.week__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.week__timecol-spacer {
+  width: 70px;
+}
+
+.week__day-head {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+}
+
+.week__day-head--today {
+  background: #e3f2fd;
+  border-radius: 6px;
+}
+
+.week__body {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.week__timecol {
+  width: 70px;
+  padding-right: 6px;
+  box-sizing: border-box;
+  background: #fafafa;
+  border-right: 1px solid #eee;
+  overflow: auto;
+}
+
+.week__hours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.week__hour {
+  padding-right: 6px;
+  text-align: right;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.week__daycol {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.week__daycol--today {
+  background: #f7fbff;
+}
+
+.week__grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.week__grid-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.week__grid-row {
+  border-top: 1px solid #f4f4f4;
+  box-sizing: border-box;
+}
+
+.week__events-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}

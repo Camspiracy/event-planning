@@ -427,6 +427,7 @@ app.post("/analytics/:vendorId/reviews", authenticate, async (req, res) => {
 //================================================================
 
 
+//Create an event
 app.post('/event/apply', authenticate, async (req, res) => {
   try {
     const {
@@ -482,6 +483,7 @@ app.post('/event/apply', authenticate, async (req, res) => {
   }
 });
 
+//Fetch events
 app.get('/planner/me/events', authenticate, async (req, res) => {
   try {
     const plannerId = req.uid; 
@@ -799,7 +801,6 @@ app.get('/planner/:plannerId/bestvendors', authenticate, async (req, res) => {
   }
 });
 
-
 //Add a vendor to an event
 app.post('/planner/:eventId/vendors/:vendorId', authenticate, async (req, res) => {
   try{
@@ -835,7 +836,6 @@ app.post('/planner/:eventId/vendors/:vendorId', authenticate, async (req, res) =
 });
 
 //Update Status of past event
-
 app.get("/planner/event-status-update", authenticate, async (req, res) => {
   try {
     const now = new Date();
@@ -870,8 +870,6 @@ app.get("/planner/event-status-update", authenticate, async (req, res) => {
     return res.status(500).send("Error updating event statuses");
   }
 });
-
-
 
 // Send an invitation email when a guest is added
 exports.sendInvitationOnGuestAdded = onDocumentCreated('Event/{eventId}/Guests/{guestId}', async (event) => {
@@ -1348,7 +1346,6 @@ app.put('/planner/:eventId/schedules/:scheduleId/items/:itemId', authenticate, a
   }
 });
 
-
 // Save uploaded PDF metadata to Firestore
 app.post("/planner/schedule-save/:eventId", authenticate, async (req, res) => {
   try {
@@ -1382,7 +1379,8 @@ app.post("/planner/schedule-save/:eventId", authenticate, async (req, res) => {
 });
 
 // Upload Schedule PDF to firestore
-app.post("/planner/schedule-upload/:eventId", busboyUploadToStorageMiddleware(undefined, (req) => `Schedules/${req.params.eventId}`),
+app.post("/planner/schedule-upload/:eventId",
+ busboyUploadToStorageMiddleware(undefined, (req) => `Schedules/${req.params.eventId}`),
  async (req, res) => {
   try {
       const bucket = admin.storage().bucket();
@@ -1636,6 +1634,554 @@ app.get('/chats/:eventId/:plannerId/:vendorId/messages', authenticate, async (re
   } catch (err) {
     console.error("Error fetching messages:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ============================================
+// VENDOR REVIEW ROUTES
+// ============================================
+
+// Create a review for a vendor
+app.post('/planner/vendors/:vendorId/reviews', authenticate, async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const plannerId = req.uid;
+    const { rating, review, eventId, serviceName } = req.body;
+
+    if (!rating || !review || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Valid rating (1-5) and review text are required' });
+    }
+
+    // Verify vendor exists
+    const vendorDoc = await db.collection('Vendor').doc(vendorId).get();
+    if (!vendorDoc.exists) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    // Create review document
+    const reviewData = {
+      plannerId,
+      vendorId,
+      rating: Number(rating),
+      review: review.trim(),
+      eventId: eventId || null,
+      serviceName: serviceName || null,
+      //createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      //updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const reviewRef = await db.collection('Reviews').add(reviewData);
+
+    // Update vendor analytics
+    const analyticsRef = db.collection('Analytics').doc(vendorId);
+    const analyticsDoc = await analyticsRef.get();
+
+    if (analyticsDoc.exists) {
+      const currentData = analyticsDoc.data();
+      const currentRating = currentData.averageRating || 0;
+      const currentCount = currentData.totalReviews || 0;
+      
+      const newCount = currentCount + 1;
+      const newRating = ((currentRating * currentCount) + rating) / newCount;
+
+      await analyticsRef.update({
+        averageRating: newRating,
+        totalReviews: newCount,
+        //lastReviewDate: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      // Create analytics doc if it doesn't exist
+      await analyticsRef.set({
+        vendorId,
+        averageRating: rating,
+        totalReviews: 1,
+        //lastReviewDate: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    // Also add to Analytics Reviews subcollection for backward compatibility
+    await analyticsRef.collection('Reviews').doc(reviewRef.id).set({
+      ...reviewData,
+      //timeOfReview: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.status(201).json({
+      message: 'Review submitted successfully',
+      reviewId: reviewRef.id,
+      review: { id: reviewRef.id, ...reviewData }
+    });
+  } catch (err) {
+    console.error('Error creating review:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get all reviews for a vendor
+app.get('/vendors/:vendorId/reviews', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    const reviewsSnapshot = await db.collection('Reviews')
+      .where('vendorId', '==', vendorId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const reviews = reviewsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.json({ reviews });
+  } catch (err) {
+    console.error('Error fetching reviews:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get planner's own reviews
+app.get('/planner/my-reviews', authenticate, async (req, res) => {
+  try {
+    const plannerId = req.uid;
+
+    const reviewsSnapshot = await db.collection('Reviews')
+      .where('plannerId', '==', plannerId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const reviews = reviewsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.json({ reviews });
+  } catch (err) {
+    console.error('Error fetching planner reviews:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Update a review
+app.put('/planner/reviews/:reviewId', authenticate, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const plannerId = req.uid;
+    const { rating, review } = req.body;
+
+    const reviewRef = db.collection('Reviews').doc(reviewId);
+    const reviewDoc = await reviewRef.get();
+
+    if (!reviewDoc.exists) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    if (reviewDoc.data().plannerId !== plannerId) {
+      return res.status(403).json({ message: 'Unauthorized to edit this review' });
+    }
+
+    await reviewRef.update({
+      rating: Number(rating),
+      review: review.trim(),
+      //updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ message: 'Review updated successfully' });
+  } catch (err) {
+    console.error('Error updating review:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Delete a review
+app.delete('/planner/reviews/:reviewId', authenticate, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const plannerId = req.uid;
+
+    const reviewRef = db.collection('Reviews').doc(reviewId);
+    const reviewDoc = await reviewRef.get();
+
+    if (!reviewDoc.exists) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    if (reviewDoc.data().plannerId !== plannerId) {
+      return res.status(403).json({ message: 'Unauthorized to delete this review' });
+    }
+
+    await reviewRef.delete();
+
+    res.json({ message: 'Review deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting review:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ============================================
+// CONTRACT MANAGEMENT ROUTES
+// ============================================
+
+// Get all contracts for a planner's events
+app.get('/planner/contracts', authenticate, async (req, res) => {
+  try {
+    const plannerId = req.uid;
+    
+    // Get all events for this planner
+    const eventsSnapshot = await db.collection('Event')
+      .where('plannerId', '==', plannerId)
+      .get();
+
+    if (eventsSnapshot.empty) {
+      return res.json({ contracts: [] });
+    }
+
+    const contracts = [];
+    
+    // For each event, get all vendors and their contracts
+    for (const eventDoc of eventsSnapshot.docs) {
+      const eventData = eventDoc.data();
+      const eventId = eventDoc.id;
+      
+      const vendorsSnapshot = await db.collection('Event')
+        .doc(eventId)
+        .collection('Vendors')
+        .get();
+
+      for (const vendorDoc of vendorsSnapshot.docs) {
+        const vendorData = vendorDoc.data();
+        const vendorId = vendorDoc.id;
+        
+        const contractsSnapshot = await db.collection('Event')
+          .doc(eventId)
+          .collection('Vendors')
+          .doc(vendorId)
+          .collection('Contracts')
+          .get();
+
+        contractsSnapshot.forEach(contractDoc => {
+          const contract = contractDoc.data();
+          contracts.push({
+            id: contractDoc.id,
+            eventId,
+            eventName: eventData.name || 'Unknown Event',
+            eventDate: eventData.date,
+            vendorId,
+            vendorName: vendorData.businessName || 'Unknown Vendor',
+            contractUrl: contract.contractUrl,
+            fileName: contract.fileName || 'unknown.pdf',
+            signatureFields: contract.signatureFields || [],
+            signatureWorkflow: contract.signatureWorkflow || {
+              isElectronic: true,
+              workflowStatus: 'sent'
+            },
+            status: contract.status || 'active',
+            lastedited: contract.lastedited || { seconds: Math.floor(Date.now() / 1000) },
+            draftSignatures: contract.draftSignatures || {},
+            signedAt: contract.signedAt || null,
+            signedBy: contract.signedBy || null
+          });
+        });
+      }
+    }
+
+    res.json({ contracts });
+  } catch (err) {
+    console.error('Error fetching contracts:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Upload contract signature to storage
+app.post('/planner/contracts/:eventId/:contractId/:fieldId/signatures/upload',
+  authenticate,
+  busboyUploadToStorageMiddleware(undefined,
+     (req) => `Signatures/${req.params.eventId}/${req.params.contractId}/${req.params.fieldId}_${req.uid}_${new Date().toISOString().replace(/[:.]/g, '-')}.png`),
+  async (req, res) => {
+    try {
+
+      const eventId = req.params.eventId;
+      const contractId = req.params.contractId;
+      const fieldId = req.params.fieldId;
+      const plannerId = req.uid;
+
+      if (!eventId || !fieldId) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      const fileName = `Signatures/${req.params.eventId}/${req.params.contractId}/${req.params.fieldId}_${req.uid.plannerId}_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+
+      // Generate permanent download URL
+      const token = uuidv4();
+
+      const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media&token=${token}`;
+
+      // Save signature metadata to audit collection
+      await db.collection('SignatureAudit').add({
+        fieldId,
+        signerId: plannerId,
+        signerRole: 'client',
+        contractId,
+        eventId,
+        signatureUrl: downloadURL,
+        signedAt: new Date().toISOString(),
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+        //timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.json({ 
+        downloadURL,
+        fieldId,
+        message: 'Signature uploaded successfully'
+      });
+    } catch (err) {
+      console.error('Error uploading signature:', err);
+      res.status(500).json({ message: 'Server error', error: err.message });
+    }
+  }
+);
+
+// Save draft signatures
+app.post('/planner/contracts/:contractId/signatures/draft', authenticate, async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { eventId, vendorId, signatures } = req.body;
+
+    if (!eventId || !vendorId || !signatures) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const contractRef = db.collection('Event')
+      .doc(eventId)
+      .collection('Vendors')
+      .doc(vendorId)
+      .collection('Contracts')
+      .doc(contractId);
+
+    const contractDoc = await contractRef.get();
+    if (!contractDoc.exists) {
+      return res.status(404).json({ message: 'Contract not found' });
+    }
+
+    const currentFields = contractDoc.data().signatureFields || [];
+    const updatedFields = currentFields.map(field => {
+      if (signatures[field.id]) {
+        return {
+          ...field,
+          draftSignature: signatures[field.id].url,
+          draftSignatureData: signatures[field.id].metadata,
+          lastDraftSaved: new Date().toISOString()
+        };
+      }
+      return field;
+    });
+
+    await contractRef.update({
+      signatureFields: updatedFields,
+      draftSignatures: signatures,
+      lastDraftSaved: new Date().toISOString(),
+      //lastedited: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ 
+      message: 'Draft saved successfully',
+      signatureFields: updatedFields
+    });
+  } catch (err) {
+    console.error('Error saving draft:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Finalize and sign contract
+app.post('/planner/contracts/:contractId/finalize', authenticate, async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { eventId, vendorId, signatures, signatureFields } = req.body;
+
+    if (!eventId || !vendorId || !signatures || !signatureFields) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const plannerId = req.uid;
+    const contractRef = db.collection('Event')
+      .doc(eventId)
+      .collection('Vendors')
+      .doc(vendorId)
+      .collection('Contracts')
+      .doc(contractId);
+
+    const contractDoc = await contractRef.get();
+    if (!contractDoc.exists) {
+      return res.status(404).json({ message: 'Contract not found' });
+    }
+
+    const updatedFields = signatureFields.map(field => {
+      if (signatures[field.id]) {
+        return {
+          ...field,
+          signed: true,
+          signedAt: new Date().toISOString(),
+          signerId: plannerId,
+          signatureData: signatures[field.id].url,
+          signatureMetadata: signatures[field.id].metadata,
+          finalizedAt: new Date().toISOString()
+        };
+      }
+      return field;
+    });
+
+    const allSigned = updatedFields.every(field => !field.required || field.signed);
+
+    const updateData = {
+      signatureFields: updatedFields,
+      finalSignatures: signatures,
+      signatureWorkflow: {
+        isElectronic: true,
+        workflowStatus: allSigned ? 'completed' : 'partially_signed',
+        completedAt: allSigned ? new Date().toISOString() : null,
+        completedBy: plannerId
+      },
+      status: 'signed',
+      signedAt: new Date().toISOString(),
+      signedBy: plannerId,
+      //lastedited: admin.firestore.FieldValue.serverTimestamp(),
+      //documentHistory: admin.firestore.FieldValue.arrayUnion({
+        //action: 'document_signed',
+        //timestamp: new Date().toISOString(),
+        //signedBy: plannerId
+      //})
+    };
+
+    await contractRef.update(updateData);
+
+    // Add to audit log
+    await db.collection('ContractAudit').add({
+      contractId,
+      eventId,
+      vendorId,
+      action: 'contract_signed',
+      performedBy: plannerId,
+      performedAt: new Date().toISOString(),
+      details: {
+        signedFields: updatedFields.filter(f => f.signed).length,
+        totalFields: updatedFields.length,
+        allRequiredSigned: allSigned
+      }
+    });
+
+    res.json({ 
+      message: 'Contract signed successfully',
+      contract: {
+        id: contractId,
+        ...updateData
+      }
+    });
+  } catch (err) {
+    console.error('Error finalizing contract:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Delete contract
+app.delete('/planner/contracts/:contractId', authenticate, async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { eventId, vendorId, contractUrl } = req.query;
+
+    if (!eventId || !vendorId) {
+      return res.status(400).json({ message: 'Missing eventId or vendorId' });
+    }
+
+    const contractRef = db.collection('Event')
+      .doc(eventId)
+      .collection('Vendors')
+      .doc(vendorId)
+      .collection('Contracts')
+      .doc(contractId);
+
+    const contractDoc = await contractRef.get();
+    if (!contractDoc.exists) {
+      return res.status(404).json({ message: 'Contract not found' });
+    }
+
+    // Delete from Firestore
+    await contractRef.delete();
+
+    // Try to delete from storage
+    if (contractUrl) {
+      try {
+        const urlObj = new URL(contractUrl);
+        const storagePath = decodeURIComponent(
+          urlObj.pathname.split('/o/')[1].split('?')[0]
+        );
+        const storageRef = bucket.file(storagePath);
+        await storageRef.delete();
+      } catch (storageErr) {
+        console.warn('Failed to delete contract file from storage:', storageErr);
+      }
+    }
+
+    // Add audit log
+    await db.collection('ContractAudit').add({
+      contractId,
+      eventId,
+      vendorId,
+      action: 'contract_deleted',
+      performedBy: req.uid,
+      performedAt: new Date().toISOString(),
+      details: {
+        fileName: contractUrl ? contractUrl.split('/').pop().split('?')[0] : 'unknown',
+        deletedAt: new Date().toISOString()
+      }
+    });
+
+    res.json({ message: 'Contract deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting contract:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Confirm services after contract signing
+app.post('/planner/contracts/:contractId/confirm-services', authenticate, async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { eventId, vendorId } = req.body;
+
+    if (!eventId || !vendorId) {
+      return res.status(400).json({ message: 'Missing eventId or vendorId' });
+    }
+
+    // Get all services for this vendor in this event
+    const servicesSnapshot = await db.collection('Event')
+      .doc(eventId)
+      .collection('Services')
+      .where('vendorId', '==', vendorId)
+      .get();
+
+    if (servicesSnapshot.empty) {
+      return res.json({ message: 'No services found to confirm' });
+    }
+
+    // Update all services to confirmed
+    const batch = db.batch();
+    servicesSnapshot.forEach(serviceDoc => {
+      batch.update(serviceDoc.ref, {
+        status: 'confirmed',
+        confirmedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+
+    res.json({ 
+      message: 'Services confirmed successfully',
+      confirmedCount: servicesSnapshot.size
+    });
+  } catch (err) {
+    console.error('Error confirming services:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -2418,51 +2964,6 @@ app.get('/:eventId/:vendorId/contract-prices-final', authenticate, async (req, r
   } catch (err) {
     console.error('Error fetching final prices:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-// Confirm all services for a vendor in an event (after contract signed)
-app.post('/planner/:eventId/:vendorId/confirm-services', authenticate, async (req, res) => {
-  try {
-
-    const { eventId, vendorId } = req.params;
-
-    if (!eventId || !vendorId) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Get all services for this vendor in this event
-    const servicesRef = db.collection("Event")
-      .doc(eventId)
-      .collection("Services")
-      .where("vendorId", "==", vendorId);
-
-    const servicesSnapshot = await servicesRef.get();
-
-    if (servicesSnapshot.empty) {
-      return res.status(404).json({ message: "No services found for this vendor in this event" });
-    }
-
-    // Batch update all to "confirmed"
-    const batch = db.batch();
-    servicesSnapshot.forEach((svcDoc) => {
-      batch.update(svcDoc.ref, {
-        status: "confirmed",
-        updatedAt: new Date()
-      });
-    });
-    await batch.commit();
-
-
-    res.status(200).json({
-      message: `${servicesSnapshot.size} services confirmed successfully.`,
-      eventId,
-      vendorId
-    });
-
-  } catch (error) {
-    console.error("Error confirming services:", error);
-    res.status(500).json({ error: "Failed to confirm services" });
   }
 });
 

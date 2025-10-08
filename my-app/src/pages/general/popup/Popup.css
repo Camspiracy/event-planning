@@ -11,8 +11,8 @@
 }
 .popup-content{
     max-width: none;
-    width: 90vw;
-    max-height: 80vh;
+    width: 95vw;
+    max-height: 95vh;
     background: white;
     border-radius: 8px;
     padding: 1rem;
@@ -30,7 +30,7 @@
     z-index: 1;
 }
 
-/* Make scrollbar less intrusive in Chrome: */
+/* Make scrollbar less intrusive */
 
 ::-webkit-scrollbar {
   width: 4px;
