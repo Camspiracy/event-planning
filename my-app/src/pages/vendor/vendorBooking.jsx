@@ -112,6 +112,13 @@ const VendorBooking = ({ setActivePage }) => {
 
     fetchBookings();
   }, []);
+  const getOverallBookingStatus = (vendorServices) => {
+		if (!vendorServices || vendorServices.length === 0) return "pending";
+		const statuses = vendorServices.map((s) => s.status || "pending");
+		if (statuses.every((s) => s === "accepted")) return "accepted";
+		if (statuses.some((s) => s === "rejected")) return "rejected";
+		return "pending";
+	};
 
   // ---------- Update Vendor Status ----------
   const updateVendorStatus = async (eventId, vendorId, newStatus) => {

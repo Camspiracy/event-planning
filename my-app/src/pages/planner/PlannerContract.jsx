@@ -4,14 +4,11 @@ import React, {
 	useMemo,
 	useCallback,
 	useRef,
-	useRef,
 } from "react";
 import {
 	Calendar,
 	User,
-	User,
 	FileText,
-	Search,
 	Search,
 	X,
 	Edit3,
