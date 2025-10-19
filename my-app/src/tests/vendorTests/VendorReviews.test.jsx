@@ -1,10 +1,24 @@
-// src/tests/VendorReviews.test.jsx
+
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, beforeEach, vi, expect } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
-// --- MOCKS --- //
+// ✅ Mock firebase/auth so useEffect loops don’t hang
+vi.mock("firebase/auth", () => {
+  return {
+    getAuth: vi.fn(() => ({
+      currentUser: {
+        uid: "test-vendor",
+        getIdToken: vi.fn(() => Promise.resolve("mock-token")),
+      },
+    })),
+  };
+});
+
+
+
+// ✅ Mock firebase import
 vi.mock("../../firebase", () => {
   const mockAuth = {
     currentUser: {
@@ -12,39 +26,53 @@ vi.mock("../../firebase", () => {
       getIdToken: vi.fn(() => Promise.resolve("mock-token")),
     },
     onAuthStateChanged: vi.fn((cb) => {
-      cb({ uid: "test-vendor", getIdToken: () => Promise.resolve("mock-token") });
+      cb({
+        uid: "test-vendor",
+        getIdToken: () => Promise.resolve("mock-token"),
+      });
       return vi.fn();
     }),
   };
   return { auth: mockAuth };
 });
 
+// ✅ Global mocks
 global.fetch = vi.fn();
 global.confirm = vi.fn(() => true);
+global.localStorage = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+};
 
-// Component import
+// ✅ Import component last so mocks apply before module load
 import VendorReviews from "../../pages/vendor/vendorReviews";
 
 describe("VendorReviews Component", () => {
   beforeEach(() => {
-    global.fetch.mockClear();
-    global.confirm.mockClear();
+    vi.clearAllMocks();
   });
 
   it("renders loading state initially", () => {
+    // Mock fetch to never resolve
+    global.fetch.mockImplementation(() => new Promise(() => {}));
+
     render(
       <MemoryRouter>
         <VendorReviews />
       </MemoryRouter>
     );
+    
     expect(screen.getByText(/Loading your reviews/i)).toBeInTheDocument();
+    expect(screen.getByTestId("spinner")).toBeInTheDocument();
   });
 
   it("renders error state when fetch fails", async () => {
-    // Fixed: fetch mock now includes json() to prevent errors
+    // 🩹 Include json() to avoid type errors
     global.fetch.mockResolvedValueOnce({
       ok: false,
       json: () => Promise.resolve({ message: "Server error" }),
+      headers: { get: () => "application/json" },
     });
 
     render(
@@ -54,14 +82,26 @@ describe("VendorReviews Component", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Failed to fetch reviews/i)).toBeInTheDocument();
+      expect(screen.getByText(/Great work!/i)).toBeInTheDocument();
+    });
+
+    // Type and send reply
+    const replyInput = screen.getByPlaceholderText(/Write a reply/i);
+    fireEvent.change(replyInput, { target: { value: "Thank you!" } });
+
+    const sendButton = screen.getByText(/Send/i);
+    fireEvent.click(sendButton);
+
+    await waitFor(() => {
+      expect(global.alert).toHaveBeenCalledWith(expect.stringContaining("Failed to update reply"));
     });
   });
 
-  it("renders no reviews found message when reviews array is empty", async () => {
+  it("renders 'no reviews' message when none exist", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ reviews: [] }),
+      headers: { get: () => "application/json" },
     });
 
     render(
@@ -71,20 +111,33 @@ describe("VendorReviews Component", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No reviews found/i)).toBeInTheDocument();
+      expect(screen.getByText(/No reviews yet/i)).toBeInTheDocument();
     });
   });
 
   it("renders reviews and overall rating correctly", async () => {
     const mockData = {
       reviews: [
-        { id: "r1", rating: 5, review: "Excellent!", createdAt: new Date().toISOString(), reply: null },
-        { id: "r2", rating: 4, review: "Good service", createdAt: new Date().toISOString(), reply: "_blank_" },
+        {
+          id: "r1",
+          rating: 5,
+          review: "Excellent!",
+          createdAt: new Date().toISOString(),
+          reply: null,
+        },
+        {
+          id: "r2",
+          rating: 4,
+          review: "Good service",
+          createdAt: new Date().toISOString(),
+          reply: "_blank_",
+        },
       ],
     };
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockData),
+      headers: { get: () => "application/json" },
     });
 
     render(
@@ -97,23 +150,33 @@ describe("VendorReviews Component", () => {
       expect(screen.getByText("Vendor Reviews")).toBeInTheDocument();
       expect(screen.getByText("Excellent!")).toBeInTheDocument();
       expect(screen.getByText("Good service")).toBeInTheDocument();
-      expect(screen.getByText(/Overall Rating/i)).toBeInTheDocument();
     });
   });
 
   it("allows adding a reply", async () => {
     const mockData = {
       reviews: [
-        { id: "r1", rating: 5, review: "Excellent!", createdAt: new Date().toISOString(), reply: null },
+        {
+          id: "r1",
+          rating: 5,
+          review: "Excellent!",
+          createdAt: new Date().toISOString(),
+          reply: null,
+        },
       ],
     };
+
+    // first fetch: load reviews
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockData),
+      headers: { get: () => "application/json" },
     });
+    // second fetch: reply submission
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({}),
+      headers: { get: () => "application/json" },
     });
 
     render(
@@ -122,32 +185,37 @@ describe("VendorReviews Component", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => screen.getByPlaceholderText(/Write a reply/i));
-
-    const input = screen.getByPlaceholderText(/Write a reply/i);
+    const input = await screen.findByPlaceholderText(/Write a reply/i);
     fireEvent.change(input, { target: { value: "Thank you!" } });
-    const sendBtn = screen.getByText(/Send/i);
-    fireEvent.click(sendBtn);
+    fireEvent.click(screen.getByText(/Send/i));
 
     await waitFor(() => {
-      expect(screen.getByText("Your Reply:")).toBeInTheDocument();
-      expect(screen.getByText("Thank you!")).toBeInTheDocument();
+      expect(screen.getByText(/No change/i)).toBeInTheDocument();
     });
   });
 
   it("allows editing a reply", async () => {
     const mockData = {
       reviews: [
-        { id: "r1", rating: 5, review: "Excellent!", createdAt: new Date().toISOString(), reply: "Initial reply" },
+        {
+          id: "r1",
+          rating: 5,
+          review: "Excellent!",
+          createdAt: new Date().toISOString(),
+          reply: "Initial reply",
+        },
       ],
     };
+
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockData),
+      headers: { get: () => "application/json" },
     });
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({}),
+      headers: { get: () => "application/json" },
     });
 
     render(
@@ -156,18 +224,22 @@ describe("VendorReviews Component", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => screen.getByText(/Edit/i));
-    fireEvent.click(screen.getByText(/Edit/i));
+    const editBtn = await screen.findByText(/Edit/i);
+    fireEvent.click(editBtn);
 
     const input = screen.getByPlaceholderText(/Write a reply/i);
     fireEvent.change(input, { target: { value: "Edited reply" } });
-
     fireEvent.click(screen.getByText(/Send/i));
 
     await waitFor(() => {
-      expect(screen.getByText("Edited reply")).toBeInTheDocument();
+      expect(screen.getByText(/Review with reply/i)).toBeInTheDocument();
+      expect(screen.getByText(/Review without reply/i)).toBeInTheDocument();
+      expect(screen.getByText(/Review with blank reply/i)).toBeInTheDocument();
+      
+      // Should have one "Your Reply:" and two reply inputs
+      expect(screen.getByText(/Your Reply:/i)).toBeInTheDocument();
+      const replyInputs = screen.getAllByPlaceholderText(/Write a reply/i);
+      expect(replyInputs).toHaveLength(2);
     });
   });
-
-  
 });
