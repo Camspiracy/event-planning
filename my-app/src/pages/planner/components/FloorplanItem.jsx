@@ -1,40 +1,32 @@
 import React, { useRef, useEffect, useState } from "react";
 import "./FloorplanItem.css";
 
-const ORIGINAL_CANVAS_SIZE = 1000; // This should match your design/template size
-
-export default function FloorplanItem({ item, selectedId, onPointerDown, containerSize }) {
+export default function FloorplanItem({ item, selectedId, onPointerDown }) {
   const itemRef = useRef(null);
   const [style, setStyle] = useState({});
 
   const isSelected = selectedId === item.id;
 
-  // Compute scaled position and size
   useEffect(() => {
-    if (!containerSize) return;
-
-    const scaleX = containerSize.width / ORIGINAL_CANVAS_SIZE;
-    const scaleY = containerSize.height / ORIGINAL_CANVAS_SIZE;
-
-    const left = item.x * scaleX;
-    const top = item.y * scaleY;
-    const width = item.w * scaleX;
-    const height = item.h * scaleY;
-
     setStyle({
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${width}px`,
-      height: `${height}px`,
+      left: `${item.x - item.w / 2}px`,  // position based on center
+      top: `${item.y - item.h / 2}px`,
+      width: `${item.w}px`,
+      height: `${item.h}px`,
+      backgroundColor: item.color || "#999999",
       transform: `rotate(${item.rotation || 0}deg)`,
       position: "absolute",
-      zIndex: isSelected ? 999 : 2,
+      zIndex: isSelected ? 3 : 2,  // ensure above canvas but below sidebar
+      touchAction: "none",
+      userSelect: "none",
+      cursor: "grab",
+      pointerEvents: "auto", // make sure it's clickable/draggable
     });
-  }, [item, containerSize, isSelected]);
+  }, [item, isSelected]);
 
-  // Pointer down handler for drag/select
   const handlePointerDown = (e) => {
     e.stopPropagation();
+    e.preventDefault();
     if (onPointerDown) onPointerDown(e, item.id);
   };
 

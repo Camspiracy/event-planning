@@ -228,3 +228,19 @@
     padding: 1.25rem;
   }
 }
+
+.import-bronzefury-link {
+    background: none;
+    border: none;
+    color: #f0fdf4; /* Blue like a link */
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+    margin: 0.5rem 0;
+    font-family: inherit;
+}
+
+.import-bronzefury-link:hover {
+    color: #c3d6ff; /* Darker blue on hover */
+}

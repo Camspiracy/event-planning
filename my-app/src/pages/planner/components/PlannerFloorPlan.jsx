@@ -1,4 +1,3 @@
-// src/components/PlannerFloorPlan.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { fetchEvents, fetchVendors } from "../helpers";
 import { getAuth } from "firebase/auth";
@@ -6,22 +5,30 @@ import { useFloorplanHandlers } from "../hooks/useFloorplanHandlers";
 import { useFloorplanStorage } from "../hooks/useFloorplanStorage";
 import { uploadToVendor, exportToPNG } from "../utils/floorplanImage";
 import { ITEM_PROTOTYPES } from "../constants/floorplanItems";
-import { TEMPLATES } from "../constants/floorplanTemplates";
 import FloorplanItem from "./FloorplanItem";
-import "./PlannerFloorPlan.css"; // updated CSS
+import "./PlannerFloorPlan.css";
 
-// Buttons for adding items
-const ItemButtons = ({ addItem }) => (
-  <div className="tool-buttons">
-    {Object.keys(ITEM_PROTOTYPES).map((key) => (
-      <button key={key} onClick={() => addItem(key)}>
-        Add {ITEM_PROTOTYPES[key].type.replace(/_/g, " ")}
-      </button>
-    ))}
-  </div>
-);
+import { MapPin } from "lucide-react";
 
-// Controls for selected item
+const AddItemDropdown = ({ addItem }) => {
+  const handleChange = (e) => {
+    const key = e.target.value;
+    if (!key) return;
+    addItem(key);
+    e.target.value = "";
+  };
+  return (
+    <select onChange={handleChange} defaultValue="">
+      <option value="">— Add Item —</option>
+      {Object.keys(ITEM_PROTOTYPES).map((key) => (
+        <option key={key} value={key}>
+          {ITEM_PROTOTYPES[key].type.replace(/_/g, " ")}
+        </option>
+      ))}
+    </select>
+  );
+};
+
 const SelectedControls = ({
   selectedId,
   items,
@@ -52,45 +59,37 @@ const SelectedControls = ({
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditValues((prev) => ({ ...prev, [name]: name === "type" ? value : Number(value) }));
+    setEditValues((prev) => ({
+      ...prev,
+      [name]: name === "type" ? value : Number(value),
+    }));
   };
 
   const applyEdit = () => {
-    if (!selectedId) return;
-    editItem(selectedId, { ...editValues });
+    if (selectedId) editItem(selectedId, { ...editValues });
   };
 
   return (
     <div className="selected-controls">
-      <div className="id-selection">
-        <label htmlFor="selected-id">Selected ID:</label>
-        <select
-          id="selected-id"
-          value={selectedId || ""}
-          onChange={(e) => setSelectedId(e.target.value || null)}
-        >
-          <option value="">—</option>
-          {items.map((it) => (
-            <option key={it.id} value={it.id}>
-              {it.id} ({it.type.replace(/_/g, " ")})
-            </option>
-          ))}
-        </select>
-      </div>
+      <label>Selected ID:</label>
+      <select value={selectedId || ""} onChange={(e) => setSelectedId(e.target.value || null)}>
+        <option value="">—</option>
+        {items.map((it) => (
+          <option key={it.id} value={it.id}>
+            {it.id} ({it.type.replace(/_/g, " ")})
+          </option>
+        ))}
+      </select>
 
-      {selectedId && selectedItem && (
-        <div className="control-buttons">
-          <div className="scale-controls">
+      {selectedItem && (
+        <>
+          <div className="control-buttons">
             <button onClick={() => scaleSelected(0.9)}>Scale Down</button>
             <button onClick={() => scaleSelected(1.1)}>Scale Up</button>
-          </div>
-          <div className="rotate-controls">
             <button onClick={() => rotateSelected(-15)}>Rotate -15°</button>
             <button onClick={() => rotateSelected(15)}>Rotate +15°</button>
+            <button className="danger" onClick={removeSelected}>Remove</button>
           </div>
-          <button className="danger" onClick={removeSelected}>
-            Remove
-          </button>
 
           <div className="edit-controls">
             <h4>Edit Item</h4>
@@ -106,36 +105,19 @@ const SelectedControls = ({
             </label>
             <label>
               Width:
-              <input
-                type="number"
-                name="w"
-                value={editValues.w}
-                onChange={handleEditChange}
-                min={8}
-              />
+              <input type="number" name="w" value={editValues.w} onChange={handleEditChange} min={8} />
             </label>
             <label>
               Height:
-              <input
-                type="number"
-                name="h"
-                value={editValues.h}
-                onChange={handleEditChange}
-                min={8}
-              />
+              <input type="number" name="h" value={editValues.h} onChange={handleEditChange} min={8} />
             </label>
             <label>
               Rotation:
-              <input
-                type="number"
-                name="rotation"
-                value={editValues.rotation}
-                onChange={handleEditChange}
-              />
+              <input type="number" name="rotation" value={editValues.rotation} onChange={handleEditChange} />
             </label>
-            <button onClick={applyEdit}>Apply Changes</button>
+            <button onClick={applyEdit}>Apply</button>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -146,24 +128,17 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
   const [selectedEventId, setSelectedEventId] = useState(initialEventId || "");
   const [vendors, setVendors] = useState([]);
   const [selectedVendor, setSelectedVendor] = useState("");
-  const [template, setTemplate] = useState(TEMPLATES[0].id);
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [isDirty, setIsDirty] = useState(false);
   const [backgroundImage, setBackgroundImage] = useState(null);
   const containerRef = useRef(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 800 });
 
-  const user = getAuth().currentUser;
-
-  // Floorplan handlers
   const {
-    addItem,
+    addItem: handleAddItem,
     removeSelected,
     scaleSelected,
     rotateSelected,
     editItem,
-    deleteLocal,
     onPointerDownItem,
     onPointerMove,
     onPointerUp,
@@ -176,82 +151,58 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
     setItems,
     selectedId,
     setSelectedId,
-    setIsDirty,
   });
 
-  const { handleImageUpload, clearBackgroundImage, saveLocal, loadLocal } =
+  const { handleImageUpload, clearBackgroundImage, saveLocal, loadLocal, deleteLocal } =
     useFloorplanStorage({
       selectedEventId,
-      template,
       items,
       backgroundImage,
-      setTemplate,
       setItems,
       setBackgroundImage,
-      setIsDirty,
     });
 
-  // Load events
   useEffect(() => {
-    const loadEvents = async () => {
-      try {
-        const eventsData = await fetchEvents();
-        setEvents(eventsData);
-        if (!selectedEventId && eventsData.length > 0) setSelectedEventId(eventsData[0].id);
-      } catch (err) {
-        console.error("Fetch events error:", err.message);
-        setEvents([]);
-        alert("Failed to fetch events.");
-      }
-    };
-    loadEvents();
+    fetchEvents().then(setEvents).catch(() => setEvents([]));
   }, []);
 
-  // Load vendors when event changes
   useEffect(() => {
-    if (!selectedEventId) {
-      setVendors([]);
-      setSelectedVendor("");
-      return;
+    if (selectedEventId) {
+      fetchVendors(selectedEventId).then(setVendors).catch(() => setVendors([]));
     }
-    const loadVendors = async () => {
-      try {
-        const vendorsData = await fetchVendors(selectedEventId);
-        setVendors(vendorsData);
-      } catch (err) {
-        console.error("Fetch vendors error:", err.message);
-        setVendors([]);
-        alert("Failed to fetch vendors.");
-      }
-    };
-    loadVendors();
   }, [selectedEventId]);
 
-  // Auto-resize canvas
-  useEffect(() => {
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      setCanvasSize({ width: rect.width, height: rect.height });
+  const addItem = (key) => {
+    const proto = ITEM_PROTOTYPES[key];
+    const newItem = {
+      ...proto,
+      id: `item_${Date.now()}`,
+      x: 100,
+      y: 100,
+      color: proto.color || "#999",
     };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    setItems((p) => [...p, newItem]);
+    setSelectedId(newItem.id);
+  };
 
   return (
     <div className="floorplan-page">
-      {/* Topbar for event/vendor/template */}
+      <header className="ps-header">
+        <div className="ps-header-content">
+          <div className="ps-header-title">
+            <MapPin className="ps-header-icon" />
+            <h1>Floorplan Manager</h1>
+          </div>
+        </div>
+      </header>
+
       <div className="floorplan-topbar">
         <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}>
           <option value="">Select Event</option>
           {events.map((ev) => (
-            <option key={ev.id} value={ev.id}>
-              {ev.name || ev.id}
-            </option>
+            <option key={ev.id} value={ev.id}>{ev.name || ev.id}</option>
           ))}
         </select>
-
         <select
           value={selectedVendor}
           onChange={(e) => setSelectedVendor(e.target.value)}
@@ -259,36 +210,27 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
         >
           <option value="">Select Vendor</option>
           {vendors.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.businessName || v.id}
-            </option>
-          ))}
-        </select>
-
-        <select value={template} onChange={(e) => setTemplate(e.target.value)}>
-          {TEMPLATES.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
+            <option key={v.id} value={v.id}>{v.businessName || v.id}</option>
           ))}
         </select>
       </div>
 
-      {/* Main content: canvas + sidebar */}
       <div className="floorplan-content">
-        {/* Canvas area */}
-        <div className="floorplan-canvas-wrap">
-          <div
-            className="floorplan-canvas"
-            ref={containerRef}
-            style={{ width: `${canvasSize.width}px`, height: `${canvasSize.height}px` }}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-            onTouchCancel={onTouchEnd}
+        <div className="floorplan-canvas-wrap" ref={containerRef}>
+          <button
+            className="sidebar-toggle"
+            onClick={() => document.querySelector(".floorplan-sidebar").classList.toggle("open")}
+          >
+            ☰
+          </button>
+
+          <div className="floorplan-canvas"
+               onPointerMove={onPointerMove}
+               onPointerUp={onPointerUp}
+               onPointerCancel={onPointerUp}
+               onTouchStart={onTouchStart}
+               onTouchMove={onTouchMove}
+               onTouchEnd={onTouchEnd}
           >
             {items.map((it) => (
               <FloorplanItem
@@ -296,35 +238,23 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
                 item={it}
                 selectedId={selectedId}
                 onPointerDown={onPointerDownItem}
-                containerSize={canvasSize}
               />
             ))}
           </div>
         </div>
 
-        {/* Sidebar */}
         <aside className="floorplan-sidebar">
           <h3>Background Image</h3>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            onChange={handleImageUpload}
-          />
+          <input type="file" accept="image/*" onChange={handleImageUpload} />
           {backgroundImage && (
             <div className="image-preview">
-              <img
-                src={backgroundImage}
-                alt="Preview"
-                style={{ maxWidth: "100%", maxHeight: "100px", marginTop: 10 }}
-              />
-              <button onClick={clearBackgroundImage} className="danger">
-                Clear Image
-              </button>
+              <img src={backgroundImage} alt="Preview" style={{ width: "100%", marginTop: 10 }} />
+              <button onClick={clearBackgroundImage} className="danger">Clear Image</button>
             </div>
           )}
 
           <h3>Add Items</h3>
-          <ItemButtons addItem={addItem} />
+          <AddItemDropdown addItem={addItem} />
 
           <h3>Selected Item</h3>
           <SelectedControls
@@ -338,41 +268,15 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
           />
 
           <h3>Save / Upload</h3>
-          <div className="save-controls">
-            <button
-              onClick={() =>
-                exportToPNG({ containerRef, backgroundImage, template, items, selectedEventId })
-              }
-              disabled={!selectedEventId}
-            >
-              Download PNG
-            </button>
-            <button
-              onClick={() =>
-                uploadToVendor({
-                  containerRef,
-                  backgroundImage,
-                  template,
-                  items,
-                  selectedEventId,
-                  selectedVendor,
-                  setIsDirty,
-                })
-              }
-              disabled={!selectedEventId || !selectedVendor}
-            >
-              Send to Vendor
-            </button>
-            <button onClick={saveLocal} disabled={!selectedEventId}>
-              Save Draft
-            </button>
-            <button onClick={loadLocal} disabled={!selectedEventId}>
-              Load Draft
-            </button>
-            <button onClick={deleteLocal} disabled={!selectedEventId} className="danger">
-              Delete Draft
-            </button>
-          </div>
+          <button onClick={() => exportToPNG({ containerRef, backgroundImage, items, selectedEventId })}>
+            Download PNG
+          </button>
+          <button onClick={() => uploadToVendor({ containerRef, backgroundImage, items, selectedEventId, selectedVendor })}>
+            Send to Vendor
+          </button>
+          <button onClick={saveLocal}>Save Draft</button>
+          <button onClick={loadLocal}>Load Draft</button>
+          <button onClick={deleteLocal} className="danger">Delete Draft</button>
         </aside>
       </div>
     </div>
