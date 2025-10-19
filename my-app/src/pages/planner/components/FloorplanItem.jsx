@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import "./FloorplanItem.css";
 
-const ORIGINAL_CANVAS_SIZE = 1000; // This should match your design/template size
+const ORIGINAL_CANVAS_SIZE = 1000; // matches your design/template size
 
 export default function FloorplanItem({ item, selectedId, onPointerDown, containerSize }) {
   const itemRef = useRef(null);
@@ -26,9 +26,13 @@ export default function FloorplanItem({ item, selectedId, onPointerDown, contain
       top: `${top}px`,
       width: `${width}px`,
       height: `${height}px`,
+      backgroundColor: item.color || "#999999",
       transform: `rotate(${item.rotation || 0}deg)`,
       position: "absolute",
       zIndex: isSelected ? 999 : 2,
+      cursor: "grab",
+      userSelect: "none",
+      touchAction: "none", // important for mobile drag
     });
   }, [item, containerSize, isSelected]);
 
@@ -44,6 +48,7 @@ export default function FloorplanItem({ item, selectedId, onPointerDown, contain
       className={`fp-item ${item.shape || ""} ${isSelected ? "selected" : ""} ${item.type || ""}`}
       style={style}
       onPointerDown={handlePointerDown}
+      data-id={item.id} // important: lets touch/pointer handlers know this item's id
     >
       <span className="fp-label">{item.type.replace(/_/g, " ")}</span>
     </div>
