@@ -19,7 +19,6 @@ import PlannerViewEvent from "./PlannerViewEvent";
 import PlannerReview from "./PlannerReview";
 import PlannerContract from "./PlannerContract";
 import PlannerFloorPlan from "./components/PlannerFloorPlan";
-import PlannerSchedules from "./PlannerSchedules";
 import PlannerCalendar from "./PlannerCalendar";
 
 const PlannerApp = () => {
@@ -27,7 +26,7 @@ const PlannerApp = () => {
   const [activePage, setActivePage] = useState(
     localStorage.getItem("activePage") || "dashboard"
   );
-  const [overflowItems, setOverflowItems] = useState([]); // ids that go to More
+  const [overflowItems, setOverflowItems] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navigate = useNavigate();
@@ -38,7 +37,6 @@ const PlannerApp = () => {
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "events", label: "Events", icon: Calendar },
     { id: "vendor", label: "Vendor Marketplace", icon: Users },
-    { id: "schedule management", label: "Schedule Management", icon: Users },
     { id: "floorplan", label: "Floorplan", icon: MapPin },
     { id: "review", label: "Reviews", icon: FileText },
     { id: "documents", label: "Documents", icon: FileText },
@@ -60,6 +58,59 @@ const PlannerApp = () => {
     handleSetActivePage("vendor-marketplace");
   };
 
+  // --- Overflow Calculation ---
+  useEffect(() => {
+    const calculateOverflow = () => {
+      if (!navRef.current) return;
+
+      const container = navRef.current;
+      const allButtons = Array.from(container.querySelectorAll(".nav-btn:not(.more-btn)"));
+
+      // Temporarily unhide all buttons to measure
+      allButtons.forEach(btn => btn.classList.remove("hidden-nav-item"));
+
+      const moreButton = container.querySelector(".nav-more-dropdown");
+      const moreWidth = moreButton ? moreButton.offsetWidth : 0;
+
+      let totalWidth = moreWidth; // start with More button width
+      const newOverflow = [];
+
+      // Add buttons left to right
+      for (let i = 0; i < allButtons.length; i++) {
+        const btn = allButtons[i];
+        const btnWidth = btn.offsetWidth;
+        totalWidth += btnWidth;
+
+        if (totalWidth > container.offsetWidth) {
+          const id = btn.getAttribute("data-id");
+          if (id) newOverflow.push(id);
+        }
+      }
+
+      // Hide overflow items
+      allButtons.forEach(btn => {
+        const id = btn.getAttribute("data-id");
+        if (newOverflow.includes(id)) {
+          btn.classList.add("hidden-nav-item");
+        } else {
+          btn.classList.remove("hidden-nav-item");
+        }
+      });
+
+      // Update state only if changed
+      setOverflowItems(prev => {
+        const isSame = prev.length === newOverflow.length && prev.every((id, idx) => id === newOverflow[idx]);
+        return isSame ? prev : newOverflow;
+      });
+    };
+
+    window.addEventListener("resize", calculateOverflow);
+    calculateOverflow(); // initial call
+
+    return () => window.removeEventListener("resize", calculateOverflow);
+  }, [navigationItems]);
+
+  // --- Page Renderer ---
   const renderCurrentPage = () => {
     switch (activePage) {
       case "dashboard":
@@ -86,8 +137,6 @@ const PlannerApp = () => {
         );
       case "floorplan":
         return <PlannerFloorPlan setActivePage={setActivePage} />;
-      case "schedule management":
-        return <PlannerSchedules setActivePage={setActivePage} />;
       case "documents":
         return <PlannerContract setActivePage={setActivePage} />;
       case "selected-event":
@@ -110,94 +159,8 @@ const PlannerApp = () => {
     }
   };
 
-  // Compute overflow whenever the nav width or window size changes
-  useEffect(() => {
-    const calculateOverflow = () => {
-      const nav = navRef.current;
-      if (!nav) return;
-
-      // container width where the nav buttons live
-      const containerWidth = nav.clientWidth;
-
-      // NodeList of nav buttons (we render them all and hide via JS)
-      const buttons = Array.from(nav.querySelectorAll(".nav-btn:not(.more-btn)"));
-
-      // Measure each button width (including margin)
-      const widths = buttons.map((btn) => {
-        const rect = btn.getBoundingClientRect();
-        const style = window.getComputedStyle(btn);
-        const marginLeft = parseFloat(style.marginLeft || 0);
-        const marginRight = parseFloat(style.marginRight || 0);
-        return Math.ceil(rect.width + marginLeft + marginRight);
-      });
-
-      // estimate more button width (if needed) by creating a virtual width or using 84px fallback
-      // accurate enough for decisions; if you want exact, render a hidden more button and measure
-      const moreBtnWidth = 84;
-
-      // Find how many buttons fit (no "plus one" logic: only put items that actually don't fit)
-      let sum = 0;
-      const visible = [];
-      const hidden = [];
-      for (let i = 0; i < widths.length; i++) {
-        const w = widths[i];
-        // if adding this button would exceed width (and we'd need to reserve space for "More")
-        if (sum + w > containerWidth) {
-          // this button and the rest must be hidden
-          for (let j = i; j < widths.length; j++) hidden.push(buttons[j].dataset.id);
-          break;
-        }
-        sum += w;
-        visible.push(buttons[i].dataset.id);
-      }
-
-      // if something is hidden we must ensure More button fits; if More doesn't fit we must move
-      if (hidden.length > 0) {
-        // ensure space for More button; if not enough, shift more visible items into hidden until it fits
-        while (sum + moreBtnWidth > containerWidth && visible.length > 0) {
-          const moved = visible.pop();
-          hidden.unshift(moved);
-          const idx = buttons.findIndex((b) => b.dataset.id === moved);
-          if (idx >= 0) sum -= widths[idx];
-        }
-      }
-
-      setOverflowItems(hidden);
-      setDropdownOpen(false); // close dropdown on recalc
-    };
-
-    // Recalculate on next animation frame (gives DOM a chance to layout)
-    const rAF = () => {
-      requestAnimationFrame(calculateOverflow);
-    };
-    rAF();
-
-    window.addEventListener("resize", rAF);
-    // also observe nav size changes (in case of font load or container change)
-    const ro = new ResizeObserver(rAF);
-    if (navRef.current) ro.observe(navRef.current);
-
-    return () => {
-      window.removeEventListener("resize", rAF);
-      try {
-        ro.disconnect();
-      } catch (e) {}
-    };
-  }, [navigationItems.length]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
   return (
-    <section className="vendor-app">
+    <section className="planner-app">
       {/* Navigation Bar */}
       <nav className="vendor-navbar">
         <section className="navbar-container">
@@ -235,6 +198,7 @@ const PlannerApp = () => {
                 );
               })}
 
+              {/* Only show More button if there are overflow items */}
               {overflowItems.length > 0 && (
                 <div className="nav-more-dropdown" ref={dropdownRef}>
                   <button
@@ -274,7 +238,7 @@ const PlannerApp = () => {
         </section>
       </nav>
 
-      <main className="vendor-main">{renderCurrentPage()}</main>
+      <main className="planner-main">{renderCurrentPage()}</main>
     </section>
   );
 };
