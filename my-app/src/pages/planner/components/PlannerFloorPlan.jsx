@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { fetchEvents, fetchVendors } from "../helpers";
-import { getAuth } from "firebase/auth";
 import { useFloorplanHandlers } from "../hooks/useFloorplanHandlers";
 import { useFloorplanStorage } from "../hooks/useFloorplanStorage";
 import { uploadToVendor, exportToPNG } from "../utils/floorplanImage";
@@ -131,7 +130,16 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [backgroundImage, setBackgroundImage] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
   const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const {
     addItem: handleAddItem,
@@ -217,27 +225,23 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
 
       <div className="floorplan-content">
         <div className="floorplan-canvas-wrap" ref={containerRef}>
-          <button
-            className="sidebar-toggle"
-            onClick={() => document.querySelector(".floorplan-sidebar").classList.toggle("open")}
-          >
-            ☰
-          </button>
 
-          <div className="floorplan-canvas"
-               onPointerMove={onPointerMove}
-               onPointerUp={onPointerUp}
-               onPointerCancel={onPointerUp}
-               onTouchStart={onTouchStart}
-               onTouchMove={onTouchMove}
-               onTouchEnd={onTouchEnd}
+          <div
+            className="floorplan-canvas"
+            onPointerMove={!isMobile ? onPointerMove : undefined}
+            onPointerUp={!isMobile ? onPointerUp : undefined}
+            onPointerCancel={!isMobile ? onPointerUp : undefined}
+            onTouchStart={!isMobile ? onTouchStart : undefined}
+            onTouchMove={!isMobile ? onTouchMove : undefined}
+            onTouchEnd={!isMobile ? onTouchEnd : undefined}
           >
             {items.map((it) => (
               <FloorplanItem
                 key={it.id}
                 item={it}
                 selectedId={selectedId}
-                onPointerDown={onPointerDownItem}
+                containerSize={containerRef.current?.getBoundingClientRect()}
+                onPointerDown={!isMobile ? onPointerDownItem : undefined}
               />
             ))}
           </div>
@@ -245,38 +249,52 @@ const PlannerFloorPlan = ({ eventId: initialEventId }) => {
 
         <aside className="floorplan-sidebar">
           <h3>Background Image</h3>
-          <input type="file" accept="image/*" onChange={handleImageUpload} />
+          <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isMobile} />
           {backgroundImage && (
             <div className="image-preview">
               <img src={backgroundImage} alt="Preview" style={{ width: "100%", marginTop: 10 }} />
-              <button onClick={clearBackgroundImage} className="danger">Clear Image</button>
+              {!isMobile && (
+                <button onClick={clearBackgroundImage} className="danger">Clear Image</button>
+              )}
             </div>
           )}
 
-          <h3>Add Items</h3>
-          <AddItemDropdown addItem={addItem} />
+          {!isMobile ? (
+            <>
+              <h3>Add Items</h3>
+              <AddItemDropdown addItem={addItem} />
 
-          <h3>Selected Item</h3>
-          <SelectedControls
-            selectedId={selectedId}
-            items={items}
-            setSelectedId={setSelectedId}
-            scaleSelected={scaleSelected}
-            rotateSelected={rotateSelected}
-            removeSelected={removeSelected}
-            editItem={editItem}
-          />
+              <h3>Selected Item</h3>
+              <SelectedControls
+                selectedId={selectedId}
+                items={items}
+                setSelectedId={setSelectedId}
+                scaleSelected={scaleSelected}
+                rotateSelected={rotateSelected}
+                removeSelected={removeSelected}
+                editItem={editItem}
+              />
+            </>
+          ) : (
+            <p style={{ color: "#ef4444", marginTop: "1rem" }}>
+              Editing is not available on mobile. You can view and download the floorplan only.
+            </p>
+          )}
 
           <h3>Save / Upload</h3>
           <button onClick={() => exportToPNG({ containerRef, backgroundImage, items, selectedEventId })}>
             Download PNG
           </button>
-          <button onClick={() => uploadToVendor({ containerRef, backgroundImage, items, selectedEventId, selectedVendor })}>
-            Send to Vendor
-          </button>
-          <button onClick={saveLocal}>Save Draft</button>
-          <button onClick={loadLocal}>Load Draft</button>
-          <button onClick={deleteLocal} className="danger">Delete Draft</button>
+          {!isMobile && (
+            <>
+              <button onClick={() => uploadToVendor({ containerRef, backgroundImage, items, selectedEventId, selectedVendor })}>
+                Send to Vendor
+              </button>
+              <button onClick={saveLocal}>Save Draft</button>
+              <button onClick={loadLocal}>Load Draft</button>
+              <button onClick={deleteLocal} className="danger">Delete Draft</button>
+            </>
+          )}
         </aside>
       </div>
     </div>

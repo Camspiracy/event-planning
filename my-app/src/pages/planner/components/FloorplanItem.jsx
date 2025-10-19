@@ -1,32 +1,44 @@
 import React, { useRef, useEffect, useState } from "react";
 import "./FloorplanItem.css";
 
-export default function FloorplanItem({ item, selectedId, onPointerDown }) {
+const ORIGINAL_CANVAS_SIZE = 1000; // matches your design/template size
+
+export default function FloorplanItem({ item, selectedId, onPointerDown, containerSize }) {
   const itemRef = useRef(null);
   const [style, setStyle] = useState({});
 
   const isSelected = selectedId === item.id;
 
+  // Compute scaled position and size
   useEffect(() => {
+    if (!containerSize) return;
+
+    const scaleX = containerSize.width / ORIGINAL_CANVAS_SIZE;
+    const scaleY = containerSize.height / ORIGINAL_CANVAS_SIZE;
+
+    const left = item.x * scaleX;
+    const top = item.y * scaleY;
+    const width = item.w * scaleX;
+    const height = item.h * scaleY;
+
     setStyle({
-      left: `${item.x - item.w / 2}px`,  // position based on center
-      top: `${item.y - item.h / 2}px`,
-      width: `${item.w}px`,
-      height: `${item.h}px`,
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
       backgroundColor: item.color || "#999999",
       transform: `rotate(${item.rotation || 0}deg)`,
       position: "absolute",
-      zIndex: isSelected ? 3 : 2,  // ensure above canvas but below sidebar
-      touchAction: "none",
-      userSelect: "none",
+      zIndex: isSelected ? 999 : 2,
       cursor: "grab",
-      pointerEvents: "auto", // make sure it's clickable/draggable
+      userSelect: "none",
+      touchAction: "none", // important for mobile drag
     });
-  }, [item, isSelected]);
+  }, [item, containerSize, isSelected]);
 
+  // Pointer down handler for drag/select
   const handlePointerDown = (e) => {
     e.stopPropagation();
-    e.preventDefault();
     if (onPointerDown) onPointerDown(e, item.id);
   };
 
@@ -36,6 +48,7 @@ export default function FloorplanItem({ item, selectedId, onPointerDown }) {
       className={`fp-item ${item.shape || ""} ${isSelected ? "selected" : ""} ${item.type || ""}`}
       style={style}
       onPointerDown={handlePointerDown}
+      data-id={item.id} // important: lets touch/pointer handlers know this item's id
     >
       <span className="fp-label">{item.type.replace(/_/g, " ")}</span>
     </div>

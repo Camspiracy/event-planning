@@ -71,6 +71,10 @@ export function useFloorplanHandlers({ containerRef, items, setItems, selectedId
     e.stopPropagation();
     e.preventDefault();
 
+    // Only allow drag if the pointer down happened on an actual item
+    const it = items.find((i) => i.id === id);
+    if (!it) return;
+
     const container = containerRef.current;
     if (!container) return;
     container.setPointerCapture(e.pointerId);
@@ -78,9 +82,6 @@ export function useFloorplanHandlers({ containerRef, items, setItems, selectedId
     const rect = container.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-
-    const it = items.find((i) => i.id === id);
-    if (!it) return;
 
     setSelectedId(id);
 
@@ -99,7 +100,8 @@ export function useFloorplanHandlers({ containerRef, items, setItems, selectedId
 
   const onPointerMove = (e) => {
     const drag = dragRef.current;
-    if (!drag.id || drag.pointerId !== e.pointerId) return;
+    if (!drag.dragging && !drag.rotating) return;
+    if (drag.pointerId !== e.pointerId) return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -112,7 +114,6 @@ export function useFloorplanHandlers({ containerRef, items, setItems, selectedId
         if (it.id !== drag.id) return it;
 
         if (drag.dragging) {
-          // Move with offset
           let newX = mouseX - drag.offsetX;
           let newY = mouseY - drag.offsetY;
 
@@ -145,7 +146,13 @@ export function useFloorplanHandlers({ containerRef, items, setItems, selectedId
   };
 
   // --- TOUCH HANDLERS ---
-  const onTouchStart = (e) => onPointerDownItem(e.touches[0], e.target.dataset.id);
+  const onTouchStart = (e) => {
+    const touch = e.touches[0];
+    const id = touch.target.dataset.id;
+    if (!id) return;
+    onPointerDownItem(touch, id);
+  };
+
   const onTouchMove = (e) => onPointerMove(e.touches[0]);
   const onTouchEnd = (e) => onPointerUp(e.changedTouches[0]);
 
