@@ -14,17 +14,17 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
-    "axios": "^1.12.2",
+    "axios": "^1.15.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "firebase": "^12.3.0",
     "firebase-admin": "^13.5.0",
-    "jspdf": "^3.0.3",
-    "jspdf-autotable": "^5.0.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.542.0",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.4.168",
@@ -50,7 +50,7 @@
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
     "react-router-dom": "^7.9.3",
-    "vite": "^4.5.3",
+    "vite": "^8.0.10",
     "vitest": "^3.2.4"
   }
 }
